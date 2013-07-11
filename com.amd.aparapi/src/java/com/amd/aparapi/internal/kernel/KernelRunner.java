@@ -50,12 +50,8 @@ import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.amd.aparapi.Config;
-import com.amd.aparapi.Kernel;
-import com.amd.aparapi.EXECUTION_MODE;
+import com.amd.aparapi.*;
 import com.amd.aparapi.Kernel.KernelState;
-import com.amd.aparapi.ProfileInfo;
-import com.amd.aparapi.Range;
 import com.amd.aparapi.annotation.Constant;
 import com.amd.aparapi.annotation.Local;
 import com.amd.aparapi.device.Device;
@@ -63,7 +59,6 @@ import com.amd.aparapi.device.OpenCLDevice;
 import com.amd.aparapi.internal.exception.AparapiException;
 import com.amd.aparapi.internal.exception.CodeGenException;
 import com.amd.aparapi.internal.instruction.InstructionSet.TypeSpec;
-import com.amd.aparapi.internal.jni.KernelRunnerJNI;
 import com.amd.aparapi.internal.jni.KernelRunnerJNI;
 import com.amd.aparapi.internal.model.ClassModel;
 import com.amd.aparapi.internal.model.Entrypoint;
@@ -91,7 +86,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
    private long jniContextHandle = 0;
 
-   private Entrypoint entryPoint;
+   private Map<Class<? extends Kernel>, Entrypoint> kernelEntryPointMapping = new HashMap<Class<? extends Kernel>, Entrypoint>();
 
    private int argc;
    
@@ -505,7 +500,7 @@ public class KernelRunner extends KernelRunnerJNI {
     * @return
     * @throws AparapiException
     */
-   private boolean prepareOopConversionBuffer(Kernel kernel, KernelArg arg) throws AparapiException {
+   private boolean prepareOopConversionBuffer(Entrypoint entryPoint, Kernel kernel, KernelArg arg) throws AparapiException {
       usesOopConversion = true;
       final Class<?> arrayClass = arg.getField().getType();
       ClassModel c = null;
@@ -757,7 +752,7 @@ public class KernelRunner extends KernelRunnerJNI {
       }
    }
 
-   private boolean updateKernelArrayRefs(Kernel kernel) throws AparapiException {
+   private boolean updateKernelArrayRefs(Entrypoint entrypoint, Kernel kernel) throws AparapiException {
       boolean needsSync = false;
 
       for (int i = 0; i < argc; i++) {
@@ -772,7 +767,7 @@ public class KernelRunner extends KernelRunnerJNI {
                }
 
                if ((arg.getType() & ARG_OBJ_ARRAY_STRUCT) != 0) {
-                  prepareOopConversionBuffer(kernel, arg);
+                  prepareOopConversionBuffer(entrypoint, kernel, arg);
                } else {
                   // set up JNI fields for normal arrays
                   arg.setJavaArray(newArrayRef);
@@ -809,7 +804,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
    // private int numAvailableProcessors = Runtime.getRuntime().availableProcessors();
 
-   private KernelRunner executeOpenCL(final Kernel kernel, final Range _range, final int _passes) throws AparapiException {
+   private KernelRunner executeOpenCL(final Kernel kernel, Entrypoint entrypoint, final Range _range, final int _passes) throws AparapiException {
       /*
       if (_range.getDims() > getMaxWorkItemDimensionsJNI(jniContextHandle)) {
          throw new RangeException("Range dim size " + _range.getDims() + " > device "
@@ -854,7 +849,7 @@ public class KernelRunner extends KernelRunnerJNI {
       // Read the array refs after kernel may have changed them
       // We need to do this as input to computing the localSize
       assert args != null : "args should not be null";
-      final boolean needSync = updateKernelArrayRefs(kernel);
+      final boolean needSync = updateKernelArrayRefs(entrypoint, kernel);
       if (needSync && logger.isLoggable(Level.FINE)) {
          logger.fine("Need to resync arrays on " + kernel.getClass().getName());
       }
@@ -923,6 +918,9 @@ public class KernelRunner extends KernelRunnerJNI {
 
       /* for backward compatibility reasons we still honor execution mode */
       if (getExecutionMode().isOpenCL()) {
+
+         Entrypoint entryPoint = kernelEntryPointMapping.get(kernel.getClass());
+
          // System.out.println("OpenCL");
 
          // See if user supplied a Device
@@ -933,6 +931,7 @@ public class KernelRunner extends KernelRunnerJNI {
                try {
                   final ClassModel classModel = new ClassModel(kernel.getClass());
                   entryPoint = classModel.getEntrypoint(kernel);
+                  kernelEntryPointMapping.put(kernel.getClass(), entryPoint);
                } catch (final Exception exception) {
                   return warnFallBackAndExecute(kernel, _range, _passes, exception);
                }
@@ -1162,7 +1161,7 @@ public class KernelRunner extends KernelRunnerJNI {
                   conversionTime = System.currentTimeMillis() - executeStartTime;
 
                   try {
-                     executeOpenCL(kernel, _range, _passes);
+                     executeOpenCL(kernel, entryPoint, _range, _passes);
                   } catch (final AparapiException e) {
                      warnFallBackAndExecute(kernel, _range, _passes, e);
                   }
@@ -1171,7 +1170,7 @@ public class KernelRunner extends KernelRunnerJNI {
                }
             } else {
                try {
-                  executeOpenCL(kernel, _range, _passes);
+                  executeOpenCL(kernel, entryPoint, _range, _passes);
                } catch (final AparapiException e) {
                   warnFallBackAndExecute(kernel, _range, _passes, e);
                }

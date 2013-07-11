@@ -1,0 +1,58 @@
+package com.amd.aparapi.test.runtime;
+
+import com.amd.aparapi.EXECUTION_MODE;
+import com.amd.aparapi.Kernel;
+import com.amd.aparapi.internal.kernel.KernelRunner;
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+
+public class MultipleKernelCall {
+
+   class ArrayIncrement extends Kernel {
+      public int[] someArray;
+
+      ArrayIncrement(int[] someArray) {
+         this.someArray = someArray;
+      }
+
+      public void run() {
+         int index = getGlobalId();
+         someArray[index] += 2;
+      }
+   }
+
+   class ArrayDecrement extends Kernel {
+      public int[] someArray;
+
+      ArrayDecrement(int[] someArray) {
+         this.someArray = someArray;
+      }
+
+      public void run() {
+         int index = getGlobalId();
+         someArray[index] -= 1;
+      }
+   }
+
+   @Test
+   public void testMultipleKernelCall() {
+      KernelRunner kernelRunner = new KernelRunner();
+      kernelRunner.setExecutionMode(EXECUTION_MODE.GPU);
+
+      int[] values = new int[1000];
+      for (int i = 0; i < values.length; i++) {
+         values[i] = 10;
+      }
+
+      kernelRunner.execute(new ArrayIncrement(values), values.length);
+      kernelRunner.execute(new ArrayDecrement(values), values.length);
+
+      for (int value : values) {
+         assertEquals(11, value);
+      }
+
+      assertEquals(kernelRunner.getExecutionMode(), EXECUTION_MODE.GPU);
+   }
+}
