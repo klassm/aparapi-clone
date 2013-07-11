@@ -41,6 +41,7 @@ package com.amd.aparapi.sample.convolution;
 import java.io.File;
 
 import com.amd.aparapi.Kernel;
+import static com.amd.aparapi.GPUMethods.*;
 
 public class PureJava{
 

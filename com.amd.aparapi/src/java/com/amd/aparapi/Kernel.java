@@ -37,25 +37,19 @@ under those regulations, please refer to the U.S. Bureau of Industry and Securit
 */
 package com.amd.aparapi;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
-import java.util.logging.Logger;
-
 import com.amd.aparapi.annotation.Experimental;
+import com.amd.aparapi.annotation.OpenCLDelegate;
+import com.amd.aparapi.annotation.OpenCLMapping;
 import com.amd.aparapi.exception.DeprecatedException;
 import com.amd.aparapi.internal.kernel.KernelRunner;
 import com.amd.aparapi.internal.model.ClassModel.ConstantPool.MethodReferenceEntry;
 import com.amd.aparapi.internal.opencl.OpenCLLoader;
-import com.amd.aparapi.internal.util.UnsafeWrapper;
+
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.logging.Logger;
 
 /**
  * A <i>kernel</i> encapsulates a data parallel algorithm that will execute either on a GPU
@@ -147,99 +141,7 @@ public abstract class Kernel implements Cloneable {
 
    private static Logger logger = Logger.getLogger(Config.getLoggerName());
 
-   /**
-    *  We can use this Annotation to 'tag' intended local buffers. 
-    *  
-    *  So we can either annotate the buffer
-    *  <pre><code>
-    *  &#64Local int[] buffer = new int[1024];
-    *  </code></pre>
-    *   Or use a special suffix 
-    *  <pre><code>
-    *  int[] buffer_$local$ = new int[1024];
-    *  </code></pre>
-    *  
-    *  @see LOCAL_SUFFIX
-    * 
-    * 
-    */
-   @Retention(RetentionPolicy.RUNTIME)
-   public @interface Local {
-
-   }
-
-   /**
-    *  We can use this Annotation to 'tag' intended constant buffers. 
-    *  
-    *  So we can either annotate the buffer
-    *  <pre><code>
-    *  &#64Constant int[] buffer = new int[1024];
-    *  </code></pre>
-    *   Or use a special suffix 
-    *  <pre><code>
-    *  int[] buffer_$constant$ = new int[1024];
-    *  </code></pre>
-    *  
-    *  @see LOCAL_SUFFIX
-    * 
-    * 
-    */
-   @Retention(RetentionPolicy.RUNTIME)
-   public @interface Constant {
-
-   }
-
-   /**
-    *  We can use this suffix to 'tag' intended local buffers. 
-    *  
-    *  
-    *  So either name the buffer 
-    *  <pre><code>
-    *  int[] buffer_$local$ = new int[1024];
-    *  </code></pre>
-    *  Or use the Annotation form 
-    *  <pre><code>
-    *  &#64Local int[] buffer = new int[1024];
-    *  </code></pre>
-    */
-   public final static String LOCAL_SUFFIX = "_$local$";
-
-   /**
-    *  We can use this suffix to 'tag' intended constant buffers. 
-    *  
-    *  
-    *  So either name the buffer 
-    *  <pre><code>
-    *  int[] buffer_$constant$ = new int[1024];
-    *  </code></pre>
-    *  Or use the Annotation form 
-    *  <pre><code>
-    *  &#64Constant int[] buffer = new int[1024];
-    *  </code></pre>
-    */
-   public final static String CONSTANT_SUFFIX = "_$constant$";
-
-   /**
-    * This annotation is for internal use only
-    */
-   @Retention(RetentionPolicy.RUNTIME)
-   protected @interface OpenCLDelegate {
-
-   }
-
-   /**
-    * This annotation is for internal use only
-    */
-   @Retention(RetentionPolicy.RUNTIME)
-   protected @interface OpenCLMapping {
-      String mapTo() default "";
-
-      boolean atomic32() default false;
-
-      boolean atomic64() default false;
-   }
-
-   public abstract class Entry {
+    public abstract class Entry {
       public abstract void run();
 
       public Kernel execute(Range _range) {
@@ -403,7 +305,7 @@ public abstract class Kernel implements Cloneable {
       public boolean isOpenCL() {
          return (this == GPU) || (this == CPU);
       }
-   };
+   }
 
    private KernelRunner kernelRunner = null;
 
@@ -449,7 +351,7 @@ public abstract class Kernel implements Cloneable {
       /**
        * Copy constructor
        * 
-       * @param KernelState
+       * @param kernelState
        */
       protected KernelState(KernelState kernelState) {
          globalIds = kernelState.getGlobalIds();
@@ -919,865 +821,6 @@ public abstract class Kernel implements Cloneable {
       }
    }
 
-   /**
-    * Delegates to either {@link java.lang.Math#acos(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/acos.html">acos(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param a value to delegate to {@link java.lang.Math#acos(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/acos.html">acos(float)</a></code>
-     * @return {@link java.lang.Math#acos(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/acos.html">acos(float)</a></code>
-     * 
-     * @see java.lang.Math#acos(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/acos.html">acos(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "acos")
-   protected float acos(float a) {
-      return (float) Math.acos(a);
-   }
-
-   /**
-   * Delegates to either {@link java.lang.Math#acos(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/acos.html">acos(double)</a></code> (OpenCL).
-    * 
-    * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-    * 
-    * @param a value to delegate to {@link java.lang.Math#acos(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/acos.html">acos(double)</a></code>
-    * @return {@link java.lang.Math#acos(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/acos.html">acos(double)</a></code>
-    * 
-    * @see java.lang.Math#acos(double)
-    * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/acos.html">acos(double)</a></code>
-    */
-   @OpenCLMapping(mapTo = "acos")
-   protected double acos(double a) {
-      return Math.acos(a);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#asin(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/asin.html">asin(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#asin(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/asin.html">asin(float)</a></code>
-     * @return {@link java.lang.Math#asin(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/asin.html">asin(float)</a></code>
-     * 
-     * @see java.lang.Math#asin(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/asin.html">asin(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "asin")
-   protected float asin(float _f) {
-      return (float) Math.asin(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#asin(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/asin.html">asin(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#asin(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/asin.html">asin(double)</a></code>
-     * @return {@link java.lang.Math#asin(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/asin.html">asin(double)</a></code>
-     * 
-     * @see java.lang.Math#asin(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/asin.html">asin(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "asin")
-   protected double asin(double _d) {
-      return Math.asin(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#atan(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#atan(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan(float)</a></code>
-     * @return {@link java.lang.Math#atan(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan(float)</a></code>
-     * 
-     * @see java.lang.Math#atan(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "atan")
-   protected float atan(float _f) {
-      return (float) Math.atan(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#atan(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#atan(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan(double)</a></code>
-     * @return {@link java.lang.Math#atan(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan(double)</a></code>
-     * 
-     * @see java.lang.Math#atan(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "atan")
-   protected double atan(double _d) {
-      return Math.atan(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#atan2(double, double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan2(float, float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f1 value to delegate to first argument of {@link java.lang.Math#atan2(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan2(float, float)</a></code>
-     * @param _f2 value to delegate to second argument of {@link java.lang.Math#atan2(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan2(float, float)</a></code>
-     * @return {@link java.lang.Math#atan2(double, double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan2(float, float)</a></code>
-     * 
-     * @see java.lang.Math#atan2(double, double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan2(float, float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "atan2")
-   protected float atan2(float _f1, float _f2) {
-      return (float) Math.atan2(_f1, _f2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#atan2(double, double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan2(double, double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d1 value to delegate to first argument of {@link java.lang.Math#atan2(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan2(double, double)</a></code>
-     * @param _d2 value to delegate to second argument of {@link java.lang.Math#atan2(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan2(double, double)</a></code>
-     * @return {@link java.lang.Math#atan2(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan2(double, double)</a></code>
-     * 
-     * @see java.lang.Math#atan2(double, double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atan.html">atan2(double, double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "atan2")
-   protected double atan2(double _d1, double _d2) {
-      return Math.atan2(_d1, _d2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#ceil(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/ceil.html">ceil(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#ceil(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/ceil.html">ceil(float)</a></code>
-     * @return {@link java.lang.Math#ceil(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/ceil.html">ceil(float)</a></code>
-     * 
-     * @see java.lang.Math#ceil(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/ceil.html">ceil(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "ceil")
-   protected float ceil(float _f) {
-      return (float) Math.ceil(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#ceil(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/ceil.html">ceil(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#ceil(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/ceil.html">ceil(double)</a></code>
-     * @return {@link java.lang.Math#ceil(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/ceil.html">ceil(double)</a></code>
-     * 
-     * @see java.lang.Math#ceil(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/ceil.html">ceil(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "ceil")
-   protected double ceil(double _d) {
-      return Math.ceil(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#cos(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/cos.html">cos(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#cos(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/cos.html">cos(float)</a></code>
-     * @return {@link java.lang.Math#cos(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/cos.html">cos(float)</a></code>
-     * 
-     * @see java.lang.Math#cos(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/cos.html">cos(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "cos")
-   protected float cos(float _f) {
-      return (float) Math.cos(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#cos(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/cos.html">cos(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#cos(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/cos.html">cos(double)</a></code>
-     * @return {@link java.lang.Math#cos(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/cos.html">cos(double)</a></code>
-     * 
-     * @see java.lang.Math#cos(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/cos.html">cos(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "cos")
-   protected double cos(double _d) {
-      return Math.cos(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#exp(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/exp.html">exp(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#exp(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/exp.html">exp(float)</a></code>
-     * @return {@link java.lang.Math#exp(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/exp.html">exp(float)</a></code>
-     * 
-     * @see java.lang.Math#exp(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/exp.html">exp(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "exp")
-   protected float exp(float _f) {
-      return (float) Math.exp(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#exp(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/exp.html">exp(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#exp(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/exp.html">exp(double)</a></code>
-     * @return {@link java.lang.Math#exp(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/exp.html">exp(double)</a></code>
-     * 
-     * @see java.lang.Math#exp(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/exp.html">exp(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "exp")
-   protected double exp(double _d) {
-      return Math.exp(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#abs(float)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fabs.html">fabs(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#abs(float)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fabs.html">fabs(float)</a></code>
-     * @return {@link java.lang.Math#abs(float)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fabs.html">fabs(float)</a></code>
-     * 
-     * @see java.lang.Math#abs(float)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fabs.html">fabs(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "fabs")
-   protected float abs(float _f) {
-      return Math.abs(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#abs(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fabs.html">fabs(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#abs(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fabs.html">fabs(double)</a></code>
-     * @return {@link java.lang.Math#abs(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fabs.html">fabs(double)</a></code>
-     * 
-     * @see java.lang.Math#abs(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fabs.html">fabs(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "fabs")
-   protected double abs(double _d) {
-      return Math.abs(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#abs(int)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/abs.html">abs(int)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param n value to delegate to {@link java.lang.Math#abs(int)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/abs.html">abs(int)</a></code>
-     * @return {@link java.lang.Math#abs(int)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/abs.html">abs(int)</a></code>
-     * 
-     * @see java.lang.Math#abs(int)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/abs.html">abs(int)</a></code>
-     */
-   @OpenCLMapping(mapTo = "abs")
-   protected int abs(int n) {
-      return Math.abs(n);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#abs(long)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/abs.html">abs(long)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param n value to delegate to {@link java.lang.Math#abs(long)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/abs.html">abs(long)</a></code>
-     * @return {@link java.lang.Math#abs(long)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fabs.html">abs(long)</a></code>
-     * 
-     * @see java.lang.Math#abs(long)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/abs.html">abs(long)</a></code>
-     */
-   @OpenCLMapping(mapTo = "abs")
-   protected long abs(long n) {
-      return Math.abs(n);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#floor(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/abs.html">floor(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#floor(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/floor.html">floor(float)</a></code>
-     * @return {@link java.lang.Math#floor(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/floor.html">floor(float)</a></code>
-     * 
-     * @see java.lang.Math#floor(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/floor.html">floor(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "floor")
-   protected float floor(float _f) {
-      return (float) Math.floor(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#floor(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/abs.html">floor(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#floor(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/floor.html">floor(double)</a></code>
-     * @return {@link java.lang.Math#floor(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/floor.html">floor(double)</a></code>
-     * 
-     * @see java.lang.Math#floor(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/floor.html">floor(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "floor")
-   protected double floor(double _d) {
-      return Math.floor(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#max(float, float)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmax.html">fmax(float, float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f1 value to delegate to first argument of {@link java.lang.Math#max(float, float)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmax.html">fmax(float, float)</a></code>
-     * @param _f2 value to delegate to second argument of {@link java.lang.Math#max(float, float)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmax.html">fmax(float, float)</a></code>
-     * @return {@link java.lang.Math#max(float, float)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmax.html">fmax(float, float)</a></code>
-     * 
-     * @see java.lang.Math#max(float, float)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmax.html">fmax(float, float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "fmax")
-   protected float max(float _f1, float _f2) {
-      return Math.max(_f1, _f2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#max(double, double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmax.html">fmax(double, double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d1 value to delegate to first argument of {@link java.lang.Math#max(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmax.html">fmax(double, double)</a></code>
-     * @param _d2 value to delegate to second argument of {@link java.lang.Math#max(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmax.html">fmax(double, double)</a></code>
-     * @return {@link java.lang.Math#max(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmax.html">fmax(double, double)</a></code>
-     * 
-     * @see java.lang.Math#max(double, double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmax.html">fmax(double, double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "fmax")
-   protected double max(double _d1, double _d2) {
-      return Math.max(_d1, _d2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#max(int, int)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">max(int, int)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param n1 value to delegate to {@link java.lang.Math#max(int, int)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">max(int, int)</a></code>
-     * @param n2 value to delegate to {@link java.lang.Math#max(int, int)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">max(int, int)</a></code>
-     * @return {@link java.lang.Math#max(int, int)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">max(int, int)</a></code>
-     * 
-     * @see java.lang.Math#max(int, int)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">max(int, int)</a></code>
-     */
-   @OpenCLMapping(mapTo = "max")
-   protected int max(int n1, int n2) {
-      return Math.max(n1, n2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#max(long, long)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">max(long, long)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param n1 value to delegate to first argument of {@link java.lang.Math#max(long, long)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">max(long, long)</a></code>
-     * @param n2 value to delegate to second argument of {@link java.lang.Math#max(long, long)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">max(long, long)</a></code>
-     * @return {@link java.lang.Math#max(long, long)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">max(long, long)</a></code>
-     * 
-     * @see java.lang.Math#max(long, long)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">max(long, long)</a></code>
-     */
-   @OpenCLMapping(mapTo = "max")
-   protected long max(long n1, long n2) {
-      return Math.max(n1, n2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#min(float, float)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmin.html">fmin(float, float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f1 value to delegate to first argument of {@link java.lang.Math#min(float, float)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmin.html">fmin(float, float)</a></code>
-     * @param _f2 value to delegate to second argument of {@link java.lang.Math#min(float, float)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmin.html">fmin(float, float)</a></code>
-     * @return {@link java.lang.Math#min(float, float)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmin.html">fmin(float, float)</a></code>
-     * 
-     * @see java.lang.Math#min(float, float)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmin.html">fmin(float, float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "fmin")
-   protected float min(float _f1, float _f2) {
-      return Math.min(_f1, _f2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#min(double, double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmin.html">fmin(double, double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d1 value to delegate to first argument of {@link java.lang.Math#min(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmin.html">fmin(double, double)</a></code>
-     * @param _d2 value to delegate to second argument of {@link java.lang.Math#min(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmin.html">fmin(double, double)</a></code>
-     * @return {@link java.lang.Math#min(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmin.html">fmin(double, double)</a></code>
-     * 
-     * @see java.lang.Math#min(double, double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/fmin.html">fmin(double, double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "fmin")
-   protected double min(double _d1, double _d2) {
-      return Math.min(_d1, _d2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#min(int, int)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">min(int, int)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param n1 value to delegate to first argument of {@link java.lang.Math#min(int, int)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">min(int, int)</a></code>
-     * @param n2 value to delegate to second argument of {@link java.lang.Math#min(int, int)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">min(int, int)</a></code>
-     * @return {@link java.lang.Math#min(int, int)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">min(int, int)</a></code>
-     * 
-     * @see java.lang.Math#min(int, int)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">min(int, int)</a></code>
-     */
-   @OpenCLMapping(mapTo = "min")
-   protected int min(int n1, int n2) {
-      return Math.min(n1, n2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#min(long, long)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">min(long, long)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param n1 value to delegate to first argument of {@link java.lang.Math#min(long, long)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">min(long, long)</a></code>
-     * @param n2 value to delegate to second argument of {@link java.lang.Math#min(long, long)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">min(long, long)</a></code>
-     * @return {@link java.lang.Math#min(long, long)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">min(long, long)</a></code>
-     * 
-     * @see java.lang.Math#min(long, long)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/integerMax.html">min(long, long)</a></code>
-     */
-   @OpenCLMapping(mapTo = "min")
-   protected long min(long n1, long n2) {
-      return Math.min(n1, n2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#log(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/log.html">log(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#log(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/log.html">log(float)</a></code>
-     * @return {@link java.lang.Math#log(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/log.html">log(float)</a></code>
-     * 
-     * @see java.lang.Math#log(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/log.html">log(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "log")
-   protected float log(float _f) {
-      return (float) Math.log(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#log(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/log.html">log(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#log(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/log.html">log(double)</a></code>
-     * @return {@link java.lang.Math#log(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/log.html">log(double)</a></code>
-     * 
-     * @see java.lang.Math#log(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/log.html">log(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "log")
-   protected double log(double _d) {
-      return Math.log(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#pow(double, double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/pow.html">pow(float, float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f1 value to delegate to first argument of {@link java.lang.Math#pow(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/pow.html">pow(float, float)</a></code>
-     * @param _f2 value to delegate to second argument of {@link java.lang.Math#pow(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/pow.html">pow(float, float)</a></code>
-     * @return {@link java.lang.Math#pow(double, double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/pow.html">pow(float, float)</a></code>
-     * 
-     * @see java.lang.Math#pow(double, double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/pow.html">pow(float, float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "pow")
-   protected float pow(float _f1, float _f2) {
-      return (float) Math.pow(_f1, _f2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#pow(double, double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/pow.html">pow(double, double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d1 value to delegate to first argument of {@link java.lang.Math#pow(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/pow.html">pow(double, double)</a></code>
-     * @param _d2 value to delegate to second argument of {@link java.lang.Math#pow(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/pow.html">pow(double, double)</a></code>
-     * @return {@link java.lang.Math#pow(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/pow.html">pow(double, double)</a></code>
-     * 
-     * @see java.lang.Math#pow(double, double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/pow.html">pow(double, double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "pow")
-   protected double pow(double _d1, double _d2) {
-      return Math.pow(_d1, _d2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#IEEEremainder(double, double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/remainder.html">remainder(float, float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f1 value to delegate to first argument of {@link java.lang.Math#IEEEremainder(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/remainder.html">remainder(float, float)</a></code>
-     * @param _f2 value to delegate to second argument of {@link java.lang.Math#IEEEremainder(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/remainder.html">remainder(float, float)</a></code>
-     * @return {@link java.lang.Math#IEEEremainder(double, double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/remainder.html">remainder(float, float)</a></code>
-     * 
-     * @see java.lang.Math#IEEEremainder(double, double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/remainder.html">remainder(float, float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "remainder")
-   protected float IEEEremainder(float _f1, float _f2) {
-      return (float) Math.IEEEremainder(_f1, _f2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#IEEEremainder(double, double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/remainder.html">remainder(double, double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d1 value to delegate to first argument of {@link java.lang.Math#IEEEremainder(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/remainder.html">remainder(double, double)</a></code>
-     * @param _d2 value to delegate to second argument of {@link java.lang.Math#IEEEremainder(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/remainder.html">remainder(double, double)</a></code>
-     * @return {@link java.lang.Math#IEEEremainder(double, double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/remainder.html">remainder(double, double)</a></code>
-     * 
-     * @see java.lang.Math#IEEEremainder(double, double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/remainder.html">remainder(double, double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "remainder")
-   protected double IEEEremainder(double _d1, double _d2) {
-      return Math.IEEEremainder(_d1, _d2);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#toRadians(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/radians.html">radians(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#toRadians(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/radians.html">radians(float)</a></code>
-     * @return {@link java.lang.Math#toRadians(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/radians.html">radians(float)</a></code>
-     * 
-     * @see java.lang.Math#toRadians(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/radians.html">radians(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "radians")
-   protected float toRadians(float _f) {
-      return (float) Math.toRadians(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#toRadians(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/radians.html">radians(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#toRadians(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/radians.html">radians(double)</a></code>
-     * @return {@link java.lang.Math#toRadians(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/radians.html">radians(double)</a></code>
-     * 
-     * @see java.lang.Math#toRadians(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/radians.html">radians(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "radians")
-   protected double toRadians(double _d) {
-      return Math.toRadians(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#toDegrees(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/degrees.html">degrees(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#toDegrees(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/degrees.html">degrees(float)</a></code>
-     * @return {@link java.lang.Math#toDegrees(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/degrees.html">degrees(float)</a></code>
-     * 
-     * @see java.lang.Math#toDegrees(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/degrees.html">degrees(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "degrees")
-   protected float toDegrees(float _f) {
-      return (float) Math.toDegrees(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#toDegrees(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/degrees.html">degrees(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#toDegrees(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/degrees.html">degrees(double)</a></code>
-     * @return {@link java.lang.Math#toDegrees(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/degrees.html">degrees(double)</a></code>
-     * 
-     * @see java.lang.Math#toDegrees(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/degrees.html">degrees(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "degrees")
-   protected double toDegrees(double _d) {
-      return Math.toDegrees(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#rint(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/rint.html">rint(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#rint(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/rint.html">rint(float)</a></code>
-     * @return {@link java.lang.Math#rint(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/rint.html">rint(float)</a></code>
-     * 
-     * @see java.lang.Math#rint(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/rint.html">rint(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "rint")
-   protected float rint(float _f) {
-      return (float) Math.rint(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#rint(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/rint.html">rint(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#rint(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/rint.html">rint(double)</a></code>
-     * @return {@link java.lang.Math#rint(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/rint.html">rint(double)</a></code>
-     * 
-     * @see java.lang.Math#rint(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/rint.html">rint(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "rint")
-   protected double rint(double _d) {
-      return Math.rint(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#round(float)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/round.html">round(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#round(float)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/round.html">round(float)</a></code>
-     * @return {@link java.lang.Math#round(float)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/round.html">round(float)</a></code>
-     * 
-     * @see java.lang.Math#round(float)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/round.html">round(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "round")
-   protected int round(float _f) {
-      return Math.round(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#round(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/round.html">round(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#round(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/round.html">round(double)</a></code>
-     * @return {@link java.lang.Math#round(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/round.html">round(double)</a></code>
-     * 
-     * @see java.lang.Math#round(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/round.html">round(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "round")
-   protected long round(double _d) {
-      return Math.round(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#sin(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sin.html">sin(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#sin(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sin.html">sin(float)</a></code>
-     * @return {@link java.lang.Math#sin(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sin.html">sin(float)</a></code>
-     * 
-     * @see java.lang.Math#sin(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sin.html">sin(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "sin")
-   protected float sin(float _f) {
-      return (float) Math.sin(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#sin(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sin.html">sin(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#sin(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sin.html">sin(double)</a></code>
-     * @return {@link java.lang.Math#sin(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sin.html">sin(double)</a></code>
-     * 
-     * @see java.lang.Math#sin(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sin.html">sin(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "sin")
-   protected double sin(double _d) {
-      return Math.sin(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#sqrt(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">sqrt(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#sqrt(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">sqrt(float)</a></code>
-     * @return {@link java.lang.Math#sqrt(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">sqrt(float)</a></code>
-     * 
-     * @see java.lang.Math#sqrt(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">sqrt(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "sqrt")
-   protected float sqrt(float _f) {
-      return (float) Math.sqrt(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#sqrt(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">sqrt(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#sqrt(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">sqrt(double)</a></code>
-     * @return {@link java.lang.Math#sqrt(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">sqrt(double)</a></code>
-     * 
-     * @see java.lang.Math#sqrt(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">sqrt(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "sqrt")
-   protected double sqrt(double _d) {
-      return Math.sqrt(_d);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#tan(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/tan.html">tan(float)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#tan(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/tan.html">tan(float)</a></code>
-     * @return {@link java.lang.Math#tan(double)} casted to float/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/tan.html">tan(float)</a></code>
-     * 
-     * @see java.lang.Math#tan(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/tan.html">tan(float)</a></code>
-     */
-   @OpenCLMapping(mapTo = "tan")
-   protected float tan(float _f) {
-      return (float) Math.tan(_f);
-   }
-
-   /**
-    * Delegates to either {@link java.lang.Math#tan(double)} (Java) or <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/tan.html">tan(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#tan(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/tan.html">tan(double)</a></code>
-     * @return {@link java.lang.Math#tan(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/tan.html">tan(double)</a></code>
-     * 
-     * @see java.lang.Math#tan(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/tan.html">tan(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "tan")
-   protected double tan(double _d) {
-      return Math.tan(_d);
-   }
-
-   // the following rsqrt and native_sqrt and native_rsqrt don't exist in java Math
-   // but added them here for nbody testing, not sure if we want to expose them
-   /**
-    * Computes  inverse square root using {@link java.lang.Math#sqrt(double)} (Java) or delegates to <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">rsqrt(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _f value to delegate to {@link java.lang.Math#sqrt(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">rsqrt(double)</a></code>
-     * @return <code>( 1.0f / {@link java.lang.Math#sqrt(double)} casted to float )</code>/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">rsqrt(double)</a></code>
-     * 
-     * @see java.lang.Math#sqrt(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">rsqrt(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "rsqrt")
-   protected float rsqrt(float _f) {
-      return (1.0f / (float) Math.sqrt(_f));
-   }
-
-   /**
-    * Computes  inverse square root using {@link java.lang.Math#sqrt(double)} (Java) or delegates to <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">rsqrt(double)</a></code> (OpenCL).
-     * 
-     * User should note the differences in precision between Java and OpenCL's implementation of arithmetic functions to determine whether the difference in precision is acceptable.
-     * 
-     * @param _d value to delegate to {@link java.lang.Math#sqrt(double)}/<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">rsqrt(double)</a></code>
-     * @return <code>( 1.0f / {@link java.lang.Math#sqrt(double)} )</code> /<code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">rsqrt(double)</a></code>
-     * 
-     * @see java.lang.Math#sqrt(double)
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/sqrt.html">rsqrt(double)</a></code>
-     */
-   @OpenCLMapping(mapTo = "rsqrt")
-   protected double rsqrt(double _d) {
-      return (1.0 / Math.sqrt(_d));
-   }
-
-   @OpenCLMapping(mapTo = "native_sqrt")
-   private float native_sqrt(float _f) {
-      int j = Float.floatToIntBits(_f);
-      j = ((1 << 29) + (j >> 1)) - (1 << 22) - 0x4c00;
-      return (Float.intBitsToFloat(j));
-      // could add more precision using one iteration of newton's method, use the following
-   }
-
-   @OpenCLMapping(mapTo = "native_rsqrt")
-   private float native_rsqrt(float _f) {
-      int j = Float.floatToIntBits(_f);
-      j = 0x5f3759df - (j >> 1);
-      final float x = (Float.intBitsToFloat(j));
-      return x;
-      // if want more precision via one iteration of newton's method, use the following
-      // float fhalf = 0.5f*_f;
-      // return (x *(1.5f - fhalf * x * x));
-   }
-
-   // Hacked from AtomicIntegerArray.getAndAdd(i, delta)
-   /**
-    * Atomically adds <code>_delta</code> value to <code>_index</code> element of array <code>_arr</code> (Java) or delegates to <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atomic_add.html">atomic_add(volatile int*, int)</a></code> (OpenCL).
-     * 
-     * 
-     * @param _arr array for which an element value needs to be atomically incremented by <code>_delta</code>
-     * @param _index index of the <code>_arr</code> array that needs to be atomically incremented by <code>_delta</code>
-     * @param _delta value by which <code>_index</code> element of <code>_arr</code> array needs to be atomically incremented  
-     * @return previous value of <code>_index</code> element of <code>_arr</code> array
-     * 
-     * @see <code><a href="http://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/atomic_add.html">atomic_add(volatile int*, int)</a></code>
-     */
-   @OpenCLMapping(atomic32 = true)
-   protected int atomicAdd(int[] _arr, int _index, int _delta) {
-      if (!Config.disableUnsafe) {
-         return UnsafeWrapper.atomicAdd(_arr, _index, _delta);
-      } else {
-         synchronized (_arr) {
-            final int previous = _arr[_index];
-            _arr[_index] += _delta;
-            return previous;
-         }
-      }
-   }
 
    /**
     * Wait for all kernels in the current group to rendezvous at this call before continuing execution.
@@ -1826,8 +869,8 @@ public abstract class Kernel implements Cloneable {
     * 
     * @return The time spent executing the kernel (ms) 
     * 
-    * @see getConversionTime();
-    * @see getAccumulatedExectutionTime();
+    * @see KernelRunner#getConversionTime();
+    * @see KernelRunner#getAccumulatedExecutionTime() ();
     * 
     */
    public synchronized long getExecutionTime() {
@@ -1845,8 +888,8 @@ public abstract class Kernel implements Cloneable {
     * 
     * @return The total time spent executing the kernel (ms) 
     * 
-    * @see getExecutionTime();
-    * @see getConversionTime();
+    * @see KernelRunner#getExecutionTime();
+    * @see KernelRunner#getConversionTime();
     * 
     */
    public synchronized long getAccumulatedExecutionTime() {
@@ -1861,8 +904,8 @@ public abstract class Kernel implements Cloneable {
     * Determine the time taken to convert bytecode to OpenCL for first Kernel.execute(range) call.
     * @return The time spent preparing the kernel for execution using GPU
     * 
-    * @see getExecutionTime();
-    * @see getAccumulatedExectutionTime();
+    * @see KernelRunner#getExecutionTime();
+    * @see #getAccumulatedExecutionTime;
     */
    public synchronized long getConversionTime() {
       if (kernelRunner == null) {
@@ -1878,7 +921,7 @@ public abstract class Kernel implements Cloneable {
     * When <code>kernel.execute(globalSize)</code> is invoked, Aparapi will schedule the execution of <code>globalSize</code> kernels. If the execution mode is GPU then 
     * the kernels will execute as OpenCL code on the GPU device. Otherwise, if the mode is JTP, the kernels will execute as a pool of Java threads on the CPU. 
     * <p>
-    * @param range The number of Kernels that we would like to initiate.
+    * @param _range The number of Kernels that we would like to initiate.
     * @returnThe Kernel instance (this) so we can chain calls to put(arr).execute(range).get(arr)
     * 
     */
@@ -1907,7 +950,7 @@ public abstract class Kernel implements Cloneable {
     * When <code>kernel.execute(_range, _passes)</code> is invoked, Aparapi will schedule the execution of <code>_reange</code> kernels. If the execution mode is GPU then 
     * the kernels will execute as OpenCL code on the GPU device. Otherwise, if the mode is JTP, the kernels will execute as a pool of Java threads on the CPU. 
     * <p>
-    * @param _globalSize The number of Kernels that we would like to initiate.
+    * @param _range range specification to execute
     * @param _passes The number of passes to make
     * @return The Kernel instance (this) so we can chain calls to put(arr).execute(range).get(arr)
     * 
@@ -1937,8 +980,8 @@ public abstract class Kernel implements Cloneable {
     * When <code>kernel.execute("entrypoint", globalSize)</code> is invoked, Aparapi will schedule the execution of <code>globalSize</code> kernels. If the execution mode is GPU then 
     * the kernels will execute as OpenCL code on the GPU device. Otherwise, if the mode is JTP, the kernels will execute as a pool of Java threads on the CPU. 
     * <p>
-    * @param _entrypoint is the name of the method we wish to use as the entrypoint to the kernel
-    * @param _globalSize The number of Kernels that we would like to initiate.
+    * @param _entry is the name of the method we wish to use as the entrypoint to the kernel
+    * @param _range The range of Kernels that we would like to initiate.
     * @return The Kernel instance (this) so we can chain calls to put(arr).execute(range).get(arr)
     * 
     */
@@ -1957,7 +1000,7 @@ public abstract class Kernel implements Cloneable {
     * the kernels will execute as OpenCL code on the GPU device. Otherwise, if the mode is JTP, the kernels will execute as a pool of Java threads on the CPU. 
     * <p>
     * @param _entrypoint is the name of the method we wish to use as the entrypoint to the kernel
-    * @param _globalSize The number of Kernels that we would like to initiate.
+    * @param _range The range of Kernels that we would like to initiate.
     * @return The Kernel instance (this) so we can chain calls to put(arr).execute(range).get(arr)
     * 
     */
@@ -1972,7 +1015,7 @@ public abstract class Kernel implements Cloneable {
     * the kernels will execute as OpenCL code on the GPU device. Otherwise, if the mode is JTP, the kernels will execute as a pool of Java threads on the CPU. 
     * <p>
     * @param _entrypoint is the name of the method we wish to use as the entrypoint to the kernel
-    * @param _globalSize The number of Kernels that we would like to initiate.
+    * @param _range The number of Kernels that we would like to initiate.
     * @return The Kernel instance (this) so we can chain calls to put(arr).execute(range).get(arr)
     * 
     */

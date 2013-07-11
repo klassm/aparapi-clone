@@ -55,10 +55,10 @@ import java.util.logging.Logger;
 
 import com.amd.aparapi.Config;
 import com.amd.aparapi.Kernel;
-import com.amd.aparapi.Kernel.Constant;
+import com.amd.aparapi.annotation.Constant;
 import com.amd.aparapi.Kernel.EXECUTION_MODE;
 import com.amd.aparapi.Kernel.KernelState;
-import com.amd.aparapi.Kernel.Local;
+import com.amd.aparapi.annotation.Local;
 import com.amd.aparapi.ProfileInfo;
 import com.amd.aparapi.Range;
 import com.amd.aparapi.device.Device;
@@ -1048,10 +1048,10 @@ public class KernelRunner extends KernelRunnerJNI{
                         final Class<?> type = field.getType();
                         if (type.isArray()) {
 
-                           if (field.getAnnotation(Local.class) != null || args[i].getName().endsWith(Kernel.LOCAL_SUFFIX)) {
+                           if (field.getAnnotation(Local.class) != null || args[i].getName().endsWith(Local.LOCAL_SUFFIX)) {
                               args[i].setType(args[i].getType() | ARG_LOCAL);
                            } else if ((field.getAnnotation(Constant.class) != null)
-                                 || args[i].getName().endsWith(Kernel.CONSTANT_SUFFIX)) {
+                                 || args[i].getName().endsWith(Constant.CONSTANT_SUFFIX)) {
                               args[i].setType(args[i].getType() | ARG_CONSTANT);
                            } else {
                               args[i].setType(args[i].getType() | ARG_GLOBAL);

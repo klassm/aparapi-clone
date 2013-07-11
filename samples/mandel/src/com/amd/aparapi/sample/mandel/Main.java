@@ -56,6 +56,7 @@ import javax.swing.JFrame;
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.ProfileInfo;
 import com.amd.aparapi.Range;
+import com.amd.aparapi.annotation.Constant;
 
 /**
  * An example Aparapi application which displays a view of the Mandelbrot set and lets the user zoom in to a particular point. 
@@ -92,7 +93,8 @@ public class Main{
       final private int maxIterations = 64;
 
       /** Palette which maps iteration values to RGB values. */
-      @Constant final private int pallette[] = new int[maxIterations + 1];
+      @Constant
+      final private int pallette[] = new int[maxIterations + 1];
 
       /** Mutable values of scale, offsetx and offsety so that we can modify the zoom level and position of a view. */
       private float scale = .0f;

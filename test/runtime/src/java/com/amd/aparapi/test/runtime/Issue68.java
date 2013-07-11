@@ -1,6 +1,7 @@
 package com.amd.aparapi.test.runtime;
 
 import com.amd.aparapi.Kernel;
+import com.amd.aparapi.annotation.Constant;
 
 abstract class ArrayAccess{
    protected ArrayAccess(int offset, int length) {
@@ -195,7 +196,8 @@ public class Issue68{
 
       private final int offset;
 
-      @Constant private final int[] wTable;
+      @Constant
+      private final int[] wTable;
 
       @Constant private final int[] permutationTable;
 

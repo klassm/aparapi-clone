@@ -4,6 +4,7 @@ package com.amd.aparapi.test;
 /// com.amd.aparapi.classtools.writer.CodeGenException: composite COMPOSITE_ARBITRARY_SCOPE
 
 import com.amd.aparapi.Kernel;
+import static com.amd.aparapi.GPUMethods.*;
 
 public class CompositeArbitraryScope extends Kernel{
 

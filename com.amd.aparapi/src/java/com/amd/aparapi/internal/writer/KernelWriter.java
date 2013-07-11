@@ -55,7 +55,6 @@ import com.amd.aparapi.internal.instruction.InstructionSet.AssignToField;
 import com.amd.aparapi.internal.instruction.InstructionSet.AssignToLocalVariable;
 import com.amd.aparapi.internal.instruction.InstructionSet.BinaryOperator;
 import com.amd.aparapi.internal.instruction.InstructionSet.I_ALOAD_0;
-import com.amd.aparapi.internal.instruction.InstructionSet.I_GETFIELD;
 import com.amd.aparapi.internal.instruction.InstructionSet.I_INVOKESPECIAL;
 import com.amd.aparapi.internal.instruction.InstructionSet.I_IUSHR;
 import com.amd.aparapi.internal.instruction.InstructionSet.I_LUSHR;
@@ -307,8 +306,8 @@ public abstract class KernelWriter extends BlockWriter{
          int numDimensions = 0;
 
          // check the suffix 
-         String type = field.getName().endsWith(Kernel.LOCAL_SUFFIX) ? __local
-               : (field.getName().endsWith(Kernel.CONSTANT_SUFFIX) ? __constant : __global);
+         String type = field.getName().endsWith(com.amd.aparapi.annotation.Local.LOCAL_SUFFIX) ? __local
+               : (field.getName().endsWith(com.amd.aparapi.annotation.Constant.CONSTANT_SUFFIX) ? __constant : __global);
          final RuntimeAnnotationsEntry visibleAnnotations = field.getAttributePool().getRuntimeVisibleAnnotationsEntry();
 
          if (visibleAnnotations != null) {
@@ -536,61 +535,19 @@ public abstract class KernelWriter extends BlockWriter{
       write("}");
       newLine();
 
-      for (final MethodModel mm : _entryPoint.getCalledMethods()) {
-         // write declaration :)
+       for (final MethodModel mm : _entryPoint.getCalledMethods()) {
+           writeMethodSignature(_entryPoint, mm);
+           write(";");
+           newLine();
+       }
+       for (final MethodModel mm : _entryPoint.getCalledMethods()) {
+           // write declaration :)
 
-         final String returnType = mm.getReturnType();
-         // Arrays always map to __global arrays
-         if (returnType.startsWith("[")) {
-            write(" __global ");
-         }
-         write(convertType(returnType, true));
+           writeMethodSignature(_entryPoint, mm);
+           writeMethodBody(mm);
+           newLine();
+       }
 
-         write(mm.getName() + "(");
-
-         if (!mm.getMethod().isStatic()) {
-            if ((mm.getMethod().getClassModel() == _entryPoint.getClassModel())
-                  || mm.getMethod().getClassModel().isSuperClass(_entryPoint.getClassModel().getClassWeAreModelling())) {
-               write("This *this");
-            } else {
-               // Call to an object member or superclass of member
-               for (final ClassModel c : _entryPoint.getObjectArrayFieldsClasses().values()) {
-                  if (mm.getMethod().getClassModel() == c) {
-                     write("__global " + mm.getMethod().getClassModel().getClassWeAreModelling().getName().replace(".", "_")
-                           + " *this");
-                     break;
-                  } else if (mm.getMethod().getClassModel().isSuperClass(c.getClassWeAreModelling())) {
-                     write("__global " + c.getClassWeAreModelling().getName().replace(".", "_") + " *this");
-                     break;
-                  }
-               }
-            }
-         }
-
-         boolean alreadyHasFirstArg = !mm.getMethod().isStatic();
-
-         final LocalVariableTableEntry<LocalVariableInfo> lvte = mm.getLocalVariableTableEntry();
-         for (final LocalVariableInfo lvi : lvte) {
-            if ((lvi.getStart() == 0) && ((lvi.getVariableIndex() != 0) || mm.getMethod().isStatic())) { // full scope but skip this
-               final String descriptor = lvi.getVariableDescriptor();
-               if (alreadyHasFirstArg) {
-                  write(", ");
-               }
-
-               // Arrays always map to __global arrays
-               if (descriptor.startsWith("[")) {
-                  write(" __global ");
-               }
-
-               write(convertType(descriptor, true));
-               write(lvi.getVariableName());
-               alreadyHasFirstArg = true;
-            }
-         }
-         write(")");
-         writeMethodBody(mm);
-         newLine();
-      }
 
       write("__kernel void " + _entryPoint.getMethodModel().getSimpleName() + "(");
 
@@ -635,6 +592,58 @@ public abstract class KernelWriter extends BlockWriter{
       writeln("}");
       out();
    }
+
+    private void writeMethodSignature(Entrypoint _entryPoint, MethodModel mm) {
+        String returnType = mm.getReturnType();
+        // Arrays always map to __global arrays
+        if (returnType.startsWith("[")) {
+            write("__global ");
+        }
+        write(convertType(returnType, true));
+
+        write(mm.getName() + "(");
+
+        if (!mm.getMethod().isStatic()) {
+            if ((mm.getMethod().getClassModel() == _entryPoint.getClassModel())
+                    || mm.getMethod().getClassModel().isSuperClass(_entryPoint.getClassModel().getClassWeAreModelling())) {
+                write("This *this");
+            } else {
+                // Call to an object member or superclass of member
+                for (ClassModel c : _entryPoint.getObjectArrayFieldsClasses().values()) {
+                    if (mm.getMethod().getClassModel() == c) {
+                        write("__global " + mm.getMethod().getClassModel().getClassWeAreModelling().getName().replace(".", "_")
+                                + " *this");
+                        break;
+                    } else if (mm.getMethod().getClassModel().isSuperClass(c.getClassWeAreModelling())) {
+                        write("__global " + c.getClassWeAreModelling().getName().replace(".", "_") + " *this");
+                        break;
+                    }
+                }
+            }
+        }
+
+        boolean alreadyHasFirstArg = !mm.getMethod().isStatic();
+
+        LocalVariableTableEntry<LocalVariableInfo> lvte = mm.getLocalVariableTableEntry();
+        for (LocalVariableInfo lvi : lvte) {
+            if ((lvi.getStart() == 0) && ((lvi.getVariableIndex() != 0) || mm.getMethod().isStatic())) { // full scope but skip this
+                String descriptor = lvi.getVariableDescriptor();
+                if (alreadyHasFirstArg) {
+                    write(", ");
+                }
+
+                // Arrays always map to __global arrays
+                if (descriptor.startsWith("[")) {
+                    write(" __global ");
+                }
+
+                write(convertType(descriptor, true));
+                write(lvi.getVariableName());
+                alreadyHasFirstArg = true;
+            }
+        }
+        write(")");
+    }
 
    @Override public void writeThisRef() {
       write("this->");

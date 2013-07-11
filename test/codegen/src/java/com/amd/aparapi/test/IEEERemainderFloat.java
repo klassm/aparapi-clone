@@ -2,6 +2,8 @@ package com.amd.aparapi.test;
 
 import com.amd.aparapi.Kernel;
 
+import static com.amd.aparapi.GPUMethods.IEEEremainder;
+
 public class IEEERemainderFloat extends Kernel{
    public void run() {
       out[0] = IEEEremainder(m, n);

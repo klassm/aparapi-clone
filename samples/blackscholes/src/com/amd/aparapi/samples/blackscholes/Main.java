@@ -39,6 +39,7 @@ package com.amd.aparapi.samples.blackscholes;
 
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.Range;
+import static com.amd.aparapi.GPUMethods.*;
 
 public class Main{
 

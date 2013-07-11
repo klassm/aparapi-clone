@@ -2,6 +2,8 @@ package com.amd.aparapi.test;
 
 import com.amd.aparapi.Kernel;
 
+import static java.lang.StrictMath.IEEEremainder;
+
 public class IEEERemainderDouble extends Kernel{
    public void run() {
       out[0] = IEEEremainder(m, n);

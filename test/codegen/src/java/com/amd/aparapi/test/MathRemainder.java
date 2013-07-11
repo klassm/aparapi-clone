@@ -2,6 +2,8 @@ package com.amd.aparapi.test;
 
 import com.amd.aparapi.Kernel;
 
+import static java.lang.Math.IEEEremainder;
+
 public class MathRemainder extends Kernel{
    public void run() {
       double d1 = 7.0, d2 = 2.0;
