@@ -1,7 +1,5 @@
 package com.amd.aparapi.internal.opencl;
 
-import com.amd.aparapi.ProfileInfo;
-import com.amd.aparapi.internal.kernel.KernelRunner;
 import java.util.List;
 
 import com.amd.aparapi.internal.jni.OpenCLJNI;

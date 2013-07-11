@@ -2,6 +2,8 @@ package com.amd.aparapi.test.runtime;
 
 import com.amd.aparapi.*;
 import static org.junit.Assert.assertTrue;
+
+import com.amd.aparapi.internal.kernel.KernelRunner;
 import org.junit.Test;
 
 
@@ -40,8 +42,10 @@ public class Issue102 extends Kernel {
    }
    
    @Test public void test() {
-      execute(size);
+      KernelRunner kernelRunner = new KernelRunner();
+      kernelRunner.execute(this, size);
       validate();
+      kernelRunner.dispose();
    }
    
    public static void main(String[] args) {

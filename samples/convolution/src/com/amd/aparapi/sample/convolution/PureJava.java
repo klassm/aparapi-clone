@@ -41,6 +41,8 @@ package com.amd.aparapi.sample.convolution;
 import java.io.File;
 
 import com.amd.aparapi.Kernel;
+import com.amd.aparapi.internal.kernel.KernelRunner;
+
 import static com.amd.aparapi.GPUMethods.*;
 
 public class PureJava{
@@ -84,7 +86,9 @@ public class PureJava{
          height = _height;
          convMatrix3x3 = _convMatrix3x3;
 
-         execute(3 * width * height);
+         KernelRunner kernelRunner = new KernelRunner();
+         kernelRunner.execute(this, 3 * width * height);
+         kernelRunner.dispose();
       }
 
    }

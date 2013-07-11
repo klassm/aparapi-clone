@@ -40,6 +40,7 @@ package com.amd.aparapi.sample.add;
 
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.Range;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 
 public class Main{
 
@@ -64,13 +65,14 @@ public class Main{
          }
       };
 
-      kernel.execute(Range.create(512));
+      KernelRunner kernelRunner = new KernelRunner();
+      kernelRunner.execute(kernel, Range.create(512));
 
       for (int i = 0; i < size; i++) {
          System.out.printf("%6.2f + %6.2f = %8.2f\n", a[i], b[i], sum[i]);
       }
 
-      kernel.dispose();
+      kernelRunner.dispose();
    }
 
 }

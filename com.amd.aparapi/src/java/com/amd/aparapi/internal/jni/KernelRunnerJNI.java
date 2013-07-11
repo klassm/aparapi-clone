@@ -13,7 +13,7 @@ import com.amd.aparapi.internal.annotation.UsedByJNICode;
 /**
  * This class is intended to be used as a 'proxy' or 'facade' object for Java code to interact with JNI
  */
-public abstract class KernelRunnerJNI{
+public abstract class KernelRunnerJNI {
 
    /**
     * This 'bit' indicates that a particular <code>KernelArg</code> represents a <code>boolean</code> type (array or primitive).

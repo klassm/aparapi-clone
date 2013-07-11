@@ -1,6 +1,7 @@
 package gov.pnnl.aparapi.sample.mdarray;
 
 import com.amd.aparapi.Kernel;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 
 class MDArray {
 
@@ -9,48 +10,52 @@ class MDArray {
    static int M = 1 << 5;
 
    public static void main(String[] args) {
+      KernelRunner kernelRunner = new KernelRunner();
+
       System.out.println("boolean 1D");
-      Zrun1D();
+      Zrun1D(kernelRunner);
       System.out.println("byte 1D");
-      Brun1D();
+      Brun1D(kernelRunner);
       System.out.println("short 1D");
-      Srun1D();
+      Srun1D(kernelRunner);
       System.out.println("int 1D");
-      Irun1D();
+      Irun1D(kernelRunner);
       System.out.println("long 1D");
-      Lrun1D();
+      Lrun1D(kernelRunner);
       System.out.println("float 1D");
-      Frun1D();
+      Frun1D(kernelRunner);
       System.out.println("double 1D");
-      Drun1D();
+      Drun1D(kernelRunner);
       System.out.println("boolean 2D");
-      Zrun2D();
+      Zrun2D(kernelRunner);
       System.out.println("byte 2D");
-      Brun2D();
+      Brun2D(kernelRunner);
       System.out.println("short 2D");
-      Srun2D();
+      Srun2D(kernelRunner);
       System.out.println("int 2D");
-      Irun2D();
+      Irun2D(kernelRunner);
       System.out.println("long 2D");
-      Lrun2D();
+      Lrun2D(kernelRunner);
       System.out.println("float 2D");
-      Frun2D();
+      Frun2D(kernelRunner);
       System.out.println("double 2D");
-      Drun2D();
+      Drun2D(kernelRunner);
       System.out.println("boolean 3D");
-      Zrun3D();
+      Zrun3D(kernelRunner);
       System.out.println("byte 3D");
-      Brun3D();
+      Brun3D(kernelRunner);
       System.out.println("short 3D");
-      Srun3D();
+      Srun3D(kernelRunner);
       System.out.println("int 3D");
-      Irun3D();
+      Irun3D(kernelRunner);
       System.out.println("long 3D");
-      Lrun3D();
+      Lrun3D(kernelRunner);
       System.out.println("float 3D");
-      Frun3D();
+      Frun3D(kernelRunner);
       System.out.println("double 3D");
-      Drun3D();
+      Drun3D(kernelRunner);
+
+      kernelRunner.dispose();
    }
 
    private static boolean[] matMull(boolean[] A, boolean[] B, int N) {
@@ -550,7 +555,7 @@ class MDArray {
       return true;
    }
 
-   public static void Zrun1D() {
+   public static void Zrun1D(KernelRunner kernelRunner) {
       final boolean[] A = new boolean[N * N];
       final boolean[] B = new boolean[N * N];
       final boolean[] gpu = new boolean[N * N];
@@ -567,7 +572,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new ZMatMul1D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -584,7 +589,7 @@ class MDArray {
       }
    }
 
-   public static void Brun1D() {
+   public static void Brun1D(KernelRunner kernelRunner) {
       final byte[] A = new byte[N * N];
       final byte[] B = new byte[N * N];
       final byte[] gpu = new byte[N * N];
@@ -601,7 +606,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new BMatMul1D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -618,7 +623,7 @@ class MDArray {
       }
    }
 
-   public static void Srun1D() {
+   public static void Srun1D(KernelRunner kernelRunner) {
       final short[] A = new short[N * N];
       final short[] B = new short[N * N];
       final short[] gpu = new short[N * N];
@@ -635,7 +640,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new SMatMul1D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -652,7 +657,7 @@ class MDArray {
       }
    }
 
-   public static void Irun1D() {
+   public static void Irun1D(KernelRunner kernelRunner) {
       final int[] A = new int[N * N];
       final int[] B = new int[N * N];
       final int[] gpu = new int[N * N];
@@ -669,7 +674,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new IMatMul1D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -686,7 +691,7 @@ class MDArray {
       }
    }
 
-   public static void Lrun1D() {
+   public static void Lrun1D(KernelRunner kernelRunner) {
       final long[] A = new long[N * N];
       final long[] B = new long[N * N];
       final long[] gpu = new long[N * N];
@@ -703,7 +708,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new LMatMul1D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -720,7 +725,7 @@ class MDArray {
       }
    }
 
-   public static void Frun1D() {
+   public static void Frun1D(KernelRunner kernelRunner) {
       final float[] A = new float[N * N];
       final float[] B = new float[N * N];
       final float[] gpu = new float[N * N];
@@ -737,7 +742,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new FMatMul1D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -754,7 +759,7 @@ class MDArray {
       }
    }
 
-   public static void Drun1D() {
+   public static void Drun1D(KernelRunner kernelRunner) {
       final double[] A = new double[N * N];
       final double[] B = new double[N * N];
       final double[] gpu = new double[N * N];
@@ -771,7 +776,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new DMatMul1D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -788,7 +793,7 @@ class MDArray {
       }
    }
 
-   public static void Zrun2D() {
+   public static void Zrun2D(KernelRunner kernelRunner) {
       final boolean[][] A = new boolean[N][N];
       final boolean[][] B = new boolean[N][N];
       final boolean[][] gpu = new boolean[N][N];
@@ -805,7 +810,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new ZMatMul2D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -822,7 +827,7 @@ class MDArray {
       }
    }
 
-   public static void Brun2D() {
+   public static void Brun2D(KernelRunner kernelRunner) {
       final byte[][] A = new byte[N][N];
       final byte[][] B = new byte[N][N];
       final byte[][] gpu = new byte[N][N];
@@ -839,7 +844,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new BMatMul2D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -856,7 +861,7 @@ class MDArray {
       }
    }
 
-   public static void Srun2D() {
+   public static void Srun2D(KernelRunner kernelRunner) {
       final short[][] A = new short[N][N];
       final short[][] B = new short[N][N];
       final short[][] gpu = new short[N][N];
@@ -873,7 +878,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new SMatMul2D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -890,7 +895,7 @@ class MDArray {
       }
    }
 
-   public static void Irun2D() {
+   public static void Irun2D(KernelRunner kernelRunner) {
       final int[][] A = new int[N][N];
       final int[][] B = new int[N][N];
       final int[][] gpu = new int[N][N];
@@ -907,7 +912,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new IMatMul2D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -924,7 +929,7 @@ class MDArray {
       }
    }
 
-   public static void Lrun2D() {
+   public static void Lrun2D(KernelRunner kernelRunner) {
       final long[][] A = new long[N][N];
       final long[][] B = new long[N][N];
       final long[][] gpu = new long[N][N];
@@ -941,7 +946,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new LMatMul2D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -958,7 +963,7 @@ class MDArray {
       }
    }
 
-   public static void Frun2D() {
+   public static void Frun2D(KernelRunner kernelRunner) {
       final float[][] A = new float[N][N];
       final float[][] B = new float[N][N];
       final float[][] gpu = new float[N][N];
@@ -975,7 +980,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new FMatMul2D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -992,7 +997,7 @@ class MDArray {
       }
    }
 
-   public static void Drun2D() {
+   public static void Drun2D(KernelRunner kernelRunner) {
       final double[][] A = new double[N][N];
       final double[][] B = new double[N][N];
       final double[][] gpu = new double[N][N];
@@ -1009,7 +1014,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new DMatMul2D(A, B, gpu, N);
-      kernel.execute(N * N);
+      kernelRunner.execute(kernel, N * N);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -1026,7 +1031,7 @@ class MDArray {
       }
    }
 
-   public static void Zrun3D() {
+   public static void Zrun3D(KernelRunner kernelRunner) {
       final boolean[][][] A = new boolean[M][M][M];
       final boolean[][][] B = new boolean[M][M][M];
       final boolean[][][] gpu = new boolean[M][M][M];
@@ -1046,7 +1051,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new ZMatMul3D(A, B, gpu, M);
-      kernel.execute(M * M * M);
+      kernelRunner.execute(kernel, M * M * M);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -1063,7 +1068,7 @@ class MDArray {
       }
    }
 
-   public static void Brun3D() {
+   public static void Brun3D(KernelRunner kernelRunner) {
       final byte[][][] A = new byte[M][M][M];
       final byte[][][] B = new byte[M][M][M];
       final byte[][][] gpu = new byte[M][M][M];
@@ -1082,7 +1087,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new BMatMul3D(A, B, gpu, M);
-      kernel.execute(M * M * M);
+      kernelRunner.execute(kernel, M * M * M);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -1099,7 +1104,7 @@ class MDArray {
       }
    }
 
-   public static void Srun3D() {
+   public static void Srun3D(KernelRunner kernelRunner) {
       final short[][][] A = new short[M][M][M];
       final short[][][] B = new short[M][M][M];
       final short[][][] gpu = new short[M][M][M];
@@ -1118,7 +1123,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new SMatMul3D(A, B, gpu, M);
-      kernel.execute(M * M * M);
+      kernelRunner.execute(kernel, M * M * M);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -1135,7 +1140,7 @@ class MDArray {
       }
    }
 
-   public static void Irun3D() {
+   public static void Irun3D(KernelRunner kernelRunner) {
       final int[][][] A = new int[M][M][M];
       final int[][][] B = new int[M][M][M];
       final int[][][] gpu = new int[M][M][M];
@@ -1154,7 +1159,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new IMatMul3D(A, B, gpu, M);
-      kernel.execute(M * M * M);
+      kernelRunner.execute(kernel, M * M * M);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -1171,7 +1176,7 @@ class MDArray {
       }
    }
 
-   public static void Lrun3D() {
+   public static void Lrun3D(KernelRunner kernelRunner) {
       final long[][][] A = new long[M][M][M];
       final long[][][] B = new long[M][M][M];
       final long[][][] gpu = new long[M][M][M];
@@ -1190,7 +1195,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new LMatMul3D(A, B, gpu, M);
-      kernel.execute(M * M * M);
+      kernelRunner.execute(kernel, M * M * M);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -1207,7 +1212,7 @@ class MDArray {
       }
    }
 
-   public static void Frun3D() {
+   public static void Frun3D(KernelRunner kernelRunner) {
       final float[][][] A = new float[M][M][M];
       final float[][][] B = new float[M][M][M];
       final float[][][] gpu = new float[M][M][M];
@@ -1226,7 +1231,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new FMatMul3D(A, B, gpu, M);
-      kernel.execute(M * M * M);
+      kernelRunner.execute(kernel, M * M * M);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();
@@ -1243,7 +1248,7 @@ class MDArray {
       }
    }
 
-   public static void Drun3D() {
+   public static void Drun3D(KernelRunner kernelRunner) {
       final double[][][] A = new double[M][M][M];
       final double[][][] B = new double[M][M][M];
       final double[][][] gpu = new double[M][M][M];
@@ -1262,7 +1267,7 @@ class MDArray {
 
       long gs = System.currentTimeMillis();
       final Kernel kernel = new DMatMul3D(A, B, gpu, M);
-      kernel.execute(M * M * M);
+      kernelRunner.execute(kernel, M * M * M);
       gs = System.currentTimeMillis() - gs;
 
       long cs = System.currentTimeMillis();

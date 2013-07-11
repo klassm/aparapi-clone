@@ -1,5 +1,7 @@
 package com.amd.aparapi.test.runtime;
 
+import com.amd.aparapi.EXECUTION_MODE;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 import org.junit.Test;
 
 import com.amd.aparapi.Kernel;
@@ -492,8 +494,9 @@ public class Test12x4_4x2{
          }
 
       };
-      kernel.setExecutionMode(Kernel.EXECUTION_MODE.JTP);
-      kernel.execute(Range.create2D(12, 4, 4, 2));
-
+      KernelRunner kernelRunner = new KernelRunner();
+      kernelRunner.setExecutionMode(EXECUTION_MODE.JTP);
+      kernelRunner.execute(kernel, Range.create2D(12, 4, 4, 2));
+      kernelRunner.dispose();
    }
 }

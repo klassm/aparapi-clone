@@ -58,6 +58,7 @@ import javax.swing.WindowConstants;
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.ProfileInfo;
 import com.amd.aparapi.Range;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 
 /**
  * An example Aparapi application which demonstrates Conways 'Game Of Life'.
@@ -92,7 +93,7 @@ public class Main{
     *
     */
 
-   public static class LifeKernel extends Kernel{
+   public static class LifeKernel extends Kernel {
 
       private static final int ALIVE = 0xffffff;
 
@@ -110,7 +111,7 @@ public class Main{
 
       private int toBase;
 
-      public LifeKernel(int _width, int _height, BufferedImage _image) {
+      public LifeKernel(KernelRunner kernelRunner, int _width, int _height, BufferedImage _image) {
          imageData = ((DataBufferInt) _image.getRaster().getDataBuffer()).getData();
          width = _width;
          height = _height;
@@ -125,14 +126,13 @@ public class Main{
          System.out.println("range = " + range);
          fromBase = height * width;
          toBase = 0;
-         setExplicit(true); // This gives us a performance boost
 
          /** draw a line across the image **/
          for (int i = (width * (height / 2)) + (width / 10); i < ((width * ((height / 2) + 1)) - (width / 10)); i++) {
             imageData[i] = LifeKernel.ALIVE;
          }
 
-         put(imageData); // Because we are using explicit buffer management we must put the imageData array
+         kernelRunner.put(imageData); // Because we are using explicit buffer management we must put the imageData array
       }
 
       public void processPixel(int gid) {
@@ -172,7 +172,7 @@ public class Main{
 
       boolean sequential = Boolean.getBoolean("sequential");
 
-      public void nextGeneration() {
+      public void nextGeneration(KernelRunner kernelRunner) {
          // swap fromBase and toBase
          final int swap = fromBase;
          fromBase = toBase;
@@ -183,7 +183,7 @@ public class Main{
             }
 
          } else {
-            execute(range);
+            kernelRunner.execute(this, range);
          }
 
       }
@@ -194,6 +194,11 @@ public class Main{
 
    public static void main(String[] _args) {
 
+      final KernelRunner kernelRunner = new KernelRunner();
+
+      // this gives us a performance boost
+      kernelRunner.setExplicit(true);
+
       final JFrame frame = new JFrame("Game of Life");
       final int width = Integer.getInteger("width", 1024 + 512 + 256 + 128);
 
@@ -203,14 +208,14 @@ public class Main{
       // and bottom to top in alternate generation passses. The LifeKernel will track which pass is which
       final BufferedImage image = new BufferedImage(width, height * 2, BufferedImage.TYPE_INT_RGB);
 
-      final LifeKernel lifeKernel = new LifeKernel(width, height, image);
+      final LifeKernel lifeKernel = new LifeKernel(kernelRunner, width, height, image);
 
       // Create a component for viewing the offsecreen image
       @SuppressWarnings("serial") final JComponent viewer = new JComponent(){
          @Override public void paintComponent(Graphics g) {
-            if (lifeKernel.isExplicit()) {
-               lifeKernel.get(lifeKernel.imageData); // We only pull the imageData when we intend to use it.
-               final List<ProfileInfo> profileInfo = lifeKernel.getProfileInfo();
+            if (kernelRunner.isExplicit()) {
+               kernelRunner.get(lifeKernel.imageData); // We only pull the imageData when we intend to use it.
+               final List<ProfileInfo> profileInfo = kernelRunner.getProfileInfo();
                if (profileInfo != null) {
                   for (final ProfileInfo p : profileInfo) {
                      System.out.print(" " + p.getType() + " " + p.getLabel() + " " + (p.getStart() / 1000) + " .. "
@@ -239,7 +244,7 @@ public class Main{
          }
       });
       controlPanel.add(startButton);
-      controlPanel.add(new JLabel(lifeKernel.getExecutionMode().toString()));
+      controlPanel.add(new JLabel(kernelRunner.getExecutionMode().toString()));
 
       controlPanel.add(new JLabel("  Generations/Second="));
       final JLabel generationsPerSecond = new JLabel("0.00");
@@ -267,7 +272,7 @@ public class Main{
       }
       while (true) {
 
-         lifeKernel.nextGeneration(); // Work is performed here
+         lifeKernel.nextGeneration(kernelRunner); // Work is performed here
          viewer.repaint(); // Request a repaint of the viewer (causes paintComponent(Graphics) to be called later not synchronous
          generations++;
          final long now = System.currentTimeMillis();
@@ -277,6 +282,5 @@ public class Main{
             generations = 0;
          }
       }
-
    }
 }

@@ -80,7 +80,7 @@ public class Config extends ConfigJNI{
     *
     *  Usage -Dcom.amd.aparapi.executionMode={SEQ|JTP|CPU|GPU}
     *  
-    *  @see com.amd.aparapi.Kernel.EXECUTION_MODE
+    *  @see EXECUTION_MODE
     */
    public static final String executionMode = System.getProperty(propPkgName + ".executionMode");
 

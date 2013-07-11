@@ -5,6 +5,7 @@ import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 
+import com.amd.aparapi.internal.kernel.KernelRunner;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -54,10 +55,13 @@ public class BufferTransfer{
             array[index] = index;
          }
       });
-      kernel.execute(range);
+
+      KernelRunner kernelRunner = new KernelRunner();
+      kernelRunner.execute(kernel, range);
 
       assertTrue("in == out", Util.same(kernel.in, kernel.out));
 
+      kernelRunner.dispose();
    }
 
    public static class AddKernel extends Kernel{
@@ -75,6 +79,7 @@ public class BufferTransfer{
    }
 
    @Test public void auto() {
+      KernelRunner kernelRunner = new KernelRunner();
 
       final int SIZE = 1024;
       final AddKernel kernel = new AddKernel();
@@ -98,11 +103,11 @@ public class BufferTransfer{
 
          }
       });
-      kernel.execute(range);
+      kernelRunner.execute(kernel, range);
 
       assertTrue("expectedResult == result", Util.same(expectedResult, kernel.result));
 
-      kernel.execute(range);
+      kernelRunner.execute(kernel, range);
 
       Util.apply(expectedResult, kernel.values, new Util.Operator(){
 
@@ -114,16 +119,18 @@ public class BufferTransfer{
       assertTrue("expectedResult == result", Util.same(expectedResult, kernel.result));
 
       Util.zero(kernel.values);
-      kernel.execute(range);
+      kernelRunner.execute(kernel, range);
       assertTrue("expectedResult == result", Util.same(expectedResult, kernel.result));
 
+      kernelRunner.dispose();
    }
 
    @Test public void explicit() {
+      KernelRunner kernelRunner = new KernelRunner();
+      kernelRunner.setExplicit(true);
 
       final int SIZE = 1024;
       final AddKernel kernel = new AddKernel();
-      kernel.setExplicit(true);
       final Range range = openCLDevice.createRange(SIZE);
 
       kernel.values = new int[SIZE];
@@ -145,11 +152,12 @@ public class BufferTransfer{
          }
       });
 
-      kernel.execute(range).get(kernel.result);
+      kernelRunner.execute(kernel, range);
+      kernelRunner.get(kernel.result);
 
       assertTrue("after first explicit add expectedResult == result", Util.same(expectedResult, kernel.result));
 
-      kernel.execute(range).get(kernel.result);
+      kernelRunner.execute(kernel, range).get(kernel.result);
 
       Util.apply(expectedResult, kernel.values, new Util.Operator(){
          @Override public void apply(int[] lhs, int[] rhs, int index) {
@@ -161,19 +169,20 @@ public class BufferTransfer{
 
       Util.zero(kernel.values);
 
-      kernel.put(kernel.values).execute(range).get(kernel.result);
+      kernelRunner.put(kernel.values).execute(kernel, range).get(kernel.result);
 
       assertTrue("after zeroing values and third explici add expectedResult == result", Util.same(expectedResult, kernel.result));
 
       Util.zero(kernel.result);
 
-      kernel.put(kernel.result).execute(range).get(kernel.result);
+      kernelRunner.put(kernel.result).execute(kernel, range).get(kernel.result);
 
       Util.zero(expectedResult);
 
       assertTrue("after zeroing values and result and forth  explicit add expectedResult == result",
             Util.same(expectedResult, kernel.result));
 
+      kernelRunner.dispose();
    }
 
    private class TestKernel extends Kernel{
@@ -200,16 +209,16 @@ public class BufferTransfer{
             0
       };
 
-      public void step() {
+      public void step(KernelRunner kernelRunner) {
          int simSteps = 16;
          int[][] log = new int[neuronOutputs.length][simSteps];
-         put(neuronOutputs);
+         kernelRunner.put(neuronOutputs);
          for (simStep[0] = 0; simStep[0] < simSteps; simStep[0]++) {
-            put(simStep).execute(neuronOutputs.length).get(neuronOutputs);
+            kernelRunner.put(simStep).execute(this, neuronOutputs.length).get(neuronOutputs);
             for (int n = 0; n < neuronOutputs.length; n++)
                log[n][simStep[0]] = neuronOutputs[n];
          }
-         System.out.println(getExecutionMode() + (isExplicit() ? ", explicit" : ", auto"));
+         System.out.println(kernelRunner.getExecutionMode() + (kernelRunner.isExplicit() ? ", explicit" : ", auto"));
 
          for (int n = 0; n < neuronOutputs.length; n++)
             System.out.println(Arrays.toString(log[n]));
@@ -225,15 +234,19 @@ public class BufferTransfer{
 
    @Test public void issue60Explicit() {
 
+      KernelRunner kernelRunner = new KernelRunner();
       TestKernel kernel = new TestKernel();
-      kernel.setExplicit(true);
-      kernel.step();
+      kernelRunner.setExplicit(true);
+      kernel.step(kernelRunner);
+      kernelRunner.dispose();
 
    }
 
    @Test public void issue60Auto() {
+      KernelRunner kernelRunner = new KernelRunner();
       TestKernel kernel = new TestKernel();
-      kernel.step();
+      kernel.step(kernelRunner);
+      kernelRunner.dispose();
 
    }
 

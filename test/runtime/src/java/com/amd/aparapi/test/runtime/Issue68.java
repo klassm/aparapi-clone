@@ -2,6 +2,7 @@ package com.amd.aparapi.test.runtime;
 
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.annotation.Constant;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 
 abstract class ArrayAccess{
    protected ArrayAccess(int offset, int length) {
@@ -217,8 +218,10 @@ public class Issue68{
 
    private void transformColumns(final int length, final int count, final boolean isInverse, final ArrayAccess arrayAccess,
          final int[] wTable, final int[] permutationTable) {
+      KernelRunner kernelRunner = new KernelRunner();
+
       final Kernel kernel = new ColumnTableFNTRunnable(length, isInverse, arrayAccess, wTable, permutationTable, getModulus());
-      kernel.execute(count);
+      kernelRunner.execute(kernel, count);
    }
 
    private int getModulus() {

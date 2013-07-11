@@ -4,6 +4,7 @@ import com.amd.aparapi.Kernel;
 import com.amd.aparapi.Range;
 import com.amd.aparapi.device.Device;
 import com.amd.aparapi.device.OpenCLDevice;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 import com.amd.aparapi.opencl.OpenCL;
 import com.amd.aparapi.opencl.OpenCL.Resource;
 
@@ -26,6 +27,8 @@ public class Histogram{
    }
 
    public static void main(String[] args) {
+      KernelRunner kernelRunner = new KernelRunner();
+
       final int WIDTH = 1024 * 16;
       final int HEIGHT = 1024 * 8;
       final int BIN_SIZE = 128;
@@ -53,7 +56,7 @@ public class Histogram{
 
       };
       final Range range2 = device.createRange(BIN_SIZE);
-      k.execute(range2);
+      kernelRunner.execute(k, range2);
 
       final Range range = Range.create((WIDTH * HEIGHT) / BIN_SIZE, GROUP_SIZE);
 
@@ -76,7 +79,7 @@ public class Histogram{
                }
             }
          } else if (aparapiKernel) {
-            k.execute(range2);
+            kernelRunner.execute(k, range2);
          } else {
             histogram.bin256(range2, histo, binResult, SUB_HISTOGRAM_COUNT);
          }
@@ -92,5 +95,7 @@ public class Histogram{
             }
          }
       }
+
+      kernelRunner.dispose();
    }
 }

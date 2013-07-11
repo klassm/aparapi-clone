@@ -2627,8 +2627,8 @@ public class ClassModel{
       return clazz;
    }
 
-   public Entrypoint getEntrypoint(String _entrypointName, Object _k) throws AparapiException {
-      return (getEntrypoint(_entrypointName, "()V", _k));
+   public Entrypoint getEntrypoint(Object _k) throws AparapiException {
+      return (getEntrypoint("run", "()V", _k));
    }
 
    public Entrypoint getEntrypoint() throws AparapiException {

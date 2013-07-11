@@ -1,6 +1,9 @@
 package com.amd.aparapi.test.runtime;
 
 import static org.junit.Assert.assertTrue;
+
+import com.amd.aparapi.EXECUTION_MODE;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 import org.junit.Test;
 import com.amd.aparapi.Kernel;
 
@@ -41,12 +44,14 @@ public class CallStaticFromAnonymousKernel{
             results[gid] = CallStaticFromAnonymousKernel.fooBar(values[gid]) + doodoo(gid);
          }
       };
-      kernel.execute(size);
-      assertTrue("ran on GPU", kernel.getExecutionMode() == Kernel.EXECUTION_MODE.GPU);
+      KernelRunner kernelRunner = new KernelRunner();
+      kernelRunner.execute(kernel, size);
+      assertTrue("ran on GPU", kernelRunner.getExecutionMode() == EXECUTION_MODE.GPU);
 
       for (int i = 0; i < size; i++) {
          assertTrue("results == fooBar", results[i] == (fooBar(values[i]) + AnotherClass.foo(i)));
       }
+      kernelRunner.dispose();
    }
 
    public static void main(String args[]) {

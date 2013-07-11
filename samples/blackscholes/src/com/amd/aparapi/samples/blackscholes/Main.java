@@ -39,6 +39,8 @@ package com.amd.aparapi.samples.blackscholes;
 
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.Range;
+import com.amd.aparapi.internal.kernel.KernelRunner;
+
 import static com.amd.aparapi.GPUMethods.*;
 
 public class Main{
@@ -196,11 +198,12 @@ public class Main{
          iterExecTime = kernel.execute(size).getExecutionTime();
          totalExecTime += iterExecTime;
       }*/
-      kernel.execute(range, iterations);
-      System.out.println("Average execution time " + kernel.getAccumulatedExecutionTime() / iterations);
+      KernelRunner kernelRunner = new KernelRunner();
+      kernelRunner.execute(kernel, range, iterations);
+      System.out.println("Average execution time " + kernelRunner.getAccumulatedExecutionTime() / iterations);
       kernel.showResults(10);
 
-      kernel.dispose();
+      kernelRunner.dispose();
    }
 
 }

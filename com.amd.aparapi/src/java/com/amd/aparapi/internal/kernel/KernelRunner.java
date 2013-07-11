@@ -42,30 +42,28 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.StringTokenizer;
+import java.util.*;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.amd.aparapi.Config;
 import com.amd.aparapi.Kernel;
-import com.amd.aparapi.annotation.Constant;
-import com.amd.aparapi.Kernel.EXECUTION_MODE;
+import com.amd.aparapi.EXECUTION_MODE;
 import com.amd.aparapi.Kernel.KernelState;
-import com.amd.aparapi.annotation.Local;
 import com.amd.aparapi.ProfileInfo;
 import com.amd.aparapi.Range;
+import com.amd.aparapi.annotation.Constant;
+import com.amd.aparapi.annotation.Local;
 import com.amd.aparapi.device.Device;
 import com.amd.aparapi.device.OpenCLDevice;
 import com.amd.aparapi.internal.exception.AparapiException;
 import com.amd.aparapi.internal.exception.CodeGenException;
 import com.amd.aparapi.internal.instruction.InstructionSet.TypeSpec;
+import com.amd.aparapi.internal.jni.KernelRunnerJNI;
 import com.amd.aparapi.internal.jni.KernelRunnerJNI;
 import com.amd.aparapi.internal.model.ClassModel;
 import com.amd.aparapi.internal.model.Entrypoint;
@@ -77,47 +75,42 @@ import com.amd.aparapi.opencl.OpenCL;
  * The class is responsible for executing <code>Kernel</code> implementations. <br/>
  * 
  * The <code>KernelRunner</code> is the real workhorse for Aparapi.  Each <code>Kernel</code> instance creates a single
- * <code>KernelRunner</code> to encapsulate state and to help coordinate interactions between the <code>Kernel</code> 
+ * <code>KernelRunner</code> to encapsulate state and to help coordinate interactions between the <code>Kernel</code>
  * and it's execution logic.<br/>
  * 
- * The <code>KernelRunner</code> is created <i>lazily</i> as a result of calling <code>Kernel.execute()</code>. A this 
+ * The <code>KernelRunner</code> is created <i>lazily</i> as a result of calling <code>Kernel.execute()</code>. A this
  * time the <code>ExecutionMode</code> is consulted to determine the default requested mode.  This will dictate how 
  * the <code>KernelRunner</code> will attempt to execute the <code>Kernel</code>
  *   
- * @see com.amd.aparapi.Kernel#execute(int _globalSize)
- * 
  * @author gfrost
  *
  */
-public class KernelRunner extends KernelRunnerJNI{
+public class KernelRunner extends KernelRunnerJNI {
 
    private static Logger logger = Logger.getLogger(Config.getLoggerName());
 
    private long jniContextHandle = 0;
-
-   private final Kernel kernel;
 
    private Entrypoint entryPoint;
 
    private int argc;
    
    private final ExecutorService threadPool = Executors.newCachedThreadPool();
-   /**
-    * Create a KernelRunner for a specific Kernel instance.
-    * 
-    * @param _kernel
-    */
-   public KernelRunner(Kernel _kernel) {
-      kernel = _kernel;
-   }
+
+   private final LinkedHashSet<EXECUTION_MODE> executionModes = EXECUTION_MODE.getDefaultExecutionModes();
+
+   private Iterator<EXECUTION_MODE> currentMode = executionModes.iterator();
+
+   private EXECUTION_MODE executionMode = currentMode.next();
+
 
    /**
     * <code>Kernel.dispose()</code> delegates to <code>KernelRunner.dispose()</code> which delegates to <code>disposeJNI()</code> to actually close JNI data structures.<br/>
     * 
-    * @see KernelRunnerJNI#disposeJNI()
+    * @see #disposeJNI(long)
     */
    public void dispose() {
-      if (kernel.getExecutionMode().isOpenCL()) {
+      if (getExecutionMode().isOpenCL()) {
          disposeJNI(jniContextHandle);
       }
       threadPool.shutdownNow();
@@ -224,12 +217,12 @@ public class KernelRunner extends KernelRunnerJNI{
     *          The # of passes requested by the user (via <code>Kernel.execute(globalSize, passes)</code>). Note this is usually defaulted to 1 via <code>Kernel.execute(globalSize)</code>.
     * @return
     */
-   private long executeJava(final Range _range, final int _passes) {
+   private long executeJava(Kernel kernel, final Range _range, final int _passes) {
       if (logger.isLoggable(Level.FINE)) {
          logger.fine("executeJava: range = " + _range);
       }
 
-      if (kernel.getExecutionMode().equals(EXECUTION_MODE.SEQ)) {
+      if (getExecutionMode().equals(EXECUTION_MODE.SEQ)) {
          /**
           * SEQ mode is useful for testing trivial logic, but kernels which use SEQ mode cannot be used if the
           * product of localSize(0..3) is >1.  So we can use multi-dim ranges but only if the local size is 1 in all dimensions. 
@@ -512,7 +505,7 @@ public class KernelRunner extends KernelRunnerJNI{
     * @return
     * @throws AparapiException
     */
-   private boolean prepareOopConversionBuffer(KernelArg arg) throws AparapiException {
+   private boolean prepareOopConversionBuffer(Kernel kernel, KernelArg arg) throws AparapiException {
       usesOopConversion = true;
       final Class<?> arrayClass = arg.getField().getType();
       ClassModel c = null;
@@ -650,7 +643,7 @@ public class KernelRunner extends KernelRunnerJNI{
       return didReallocate;
    }
 
-   private void extractOopConversionBuffer(KernelArg arg) throws AparapiException {
+   private void extractOopConversionBuffer(Kernel kernel, KernelArg arg) throws AparapiException {
       final Class<?> arrayClass = arg.getField().getType();
       final ClassModel c = arg.getObjArrayElementModel();
       assert c != null : "should find class for elements: " + arrayClass.getName();
@@ -755,16 +748,16 @@ public class KernelRunner extends KernelRunnerJNI{
       }
    }
 
-   private void restoreObjects() throws AparapiException {
+   private void restoreObjects(Kernel kernel) throws AparapiException {
       for (int i = 0; i < argc; i++) {
          final KernelArg arg = args[i];
          if ((arg.getType() & ARG_OBJ_ARRAY_STRUCT) != 0) {
-            extractOopConversionBuffer(arg);
+            extractOopConversionBuffer(kernel, arg);
          }
       }
    }
 
-   private boolean updateKernelArrayRefs() throws AparapiException {
+   private boolean updateKernelArrayRefs(Kernel kernel) throws AparapiException {
       boolean needsSync = false;
 
       for (int i = 0; i < argc; i++) {
@@ -779,7 +772,7 @@ public class KernelRunner extends KernelRunnerJNI{
                }
 
                if ((arg.getType() & ARG_OBJ_ARRAY_STRUCT) != 0) {
-                  prepareOopConversionBuffer(arg);
+                  prepareOopConversionBuffer(kernel, arg);
                } else {
                   // set up JNI fields for normal arrays
                   arg.setJavaArray(newArrayRef);
@@ -816,7 +809,7 @@ public class KernelRunner extends KernelRunnerJNI{
 
    // private int numAvailableProcessors = Runtime.getRuntime().availableProcessors();
 
-   private Kernel executeOpenCL(final String _entrypointName, final Range _range, final int _passes) throws AparapiException {
+   private KernelRunner executeOpenCL(final Kernel kernel, final Range _range, final int _passes) throws AparapiException {
       /*
       if (_range.getDims() > getMaxWorkItemDimensionsJNI(jniContextHandle)) {
          throw new RangeException("Range dim size " + _range.getDims() + " > device "
@@ -861,7 +854,7 @@ public class KernelRunner extends KernelRunnerJNI{
       // Read the array refs after kernel may have changed them
       // We need to do this as input to computing the localSize
       assert args != null : "args should not be null";
-      final boolean needSync = updateKernelArrayRefs();
+      final boolean needSync = updateKernelArrayRefs(kernel);
       if (needSync && logger.isLoggable(Level.FINE)) {
          logger.fine("Need to resync arrays on " + kernel.getClass().getName());
       }
@@ -869,51 +862,58 @@ public class KernelRunner extends KernelRunnerJNI{
       // native side will reallocate array buffers if necessary
       if (runKernelJNI(jniContextHandle, _range, needSync, _passes) != 0) {
          logger.warning("### CL exec seems to have failed. Trying to revert to Java ###");
-         kernel.setFallbackExecutionMode();
-         return execute(_entrypointName, _range, _passes);
+         setFallbackExecutionMode();
+         return execute(kernel, _range, _passes);
       }
 
-      if (usesOopConversion == true) {
-         restoreObjects();
+      if (usesOopConversion) {
+         restoreObjects(kernel);
       }
 
       if (logger.isLoggable(Level.FINE)) {
          logger.fine("executeOpenCL completed. " + _range);
       }
 
-      return kernel;
+      return this;
    }
 
-   public synchronized Kernel execute(Kernel.Entry entry, final Range _range, final int _passes) {
-      System.out.println("execute(Kernel.Entry, size) not implemented");
-      return (kernel);
-   }
-
-   synchronized private Kernel fallBackAndExecute(String _entrypointName, final Range _range, final int _passes) {
-      if (kernel.hasNextExecutionMode()) {
-         kernel.tryNextExecutionMode();
+   synchronized private KernelRunner fallBackAndExecute(Kernel kernel, final Range _range, final int _passes) {
+      if (hasNextExecutionMode()) {
+         tryNextExecutionMode();
       } else {
-         kernel.setFallbackExecutionMode();
+         setFallbackExecutionMode();
       }
 
-      return execute(_entrypointName, _range, _passes);
+      return execute(kernel, _range, _passes);
    }
 
-   synchronized private Kernel warnFallBackAndExecute(String _entrypointName, final Range _range, final int _passes,
+   synchronized private KernelRunner warnFallBackAndExecute(Kernel kernel, final Range _range, final int _passes,
          Exception _exception) {
       if (logger.isLoggable(Level.WARNING)) {
          logger.warning("Reverting to Java Thread Pool (JTP) for " + kernel.getClass() + ": " + _exception.getMessage());
          _exception.printStackTrace();
       }
-      return fallBackAndExecute(_entrypointName, _range, _passes);
+      return fallBackAndExecute(kernel, _range, _passes);
    }
 
-   synchronized private Kernel warnFallBackAndExecute(String _entrypointName, final Range _range, final int _passes, String _excuse) {
+   synchronized private KernelRunner warnFallBackAndExecute(Kernel kernel, final Range _range, final int _passes, String _excuse) {
       logger.warning("Reverting to Java Thread Pool (JTP) for " + kernel.getClass() + ": " + _excuse);
-      return fallBackAndExecute(_entrypointName, _range, _passes);
+      return fallBackAndExecute(kernel, _range, _passes);
    }
 
-   public synchronized Kernel execute(String _entrypointName, final Range _range, final int _passes) {
+   public synchronized KernelRunner execute(Kernel kernel, int globalSize) {
+      return execute(kernel, globalSize, 1);
+   }
+
+   public synchronized KernelRunner execute(Kernel kernel, Range range) {
+      return execute(kernel, range, 1);
+   }
+
+   public synchronized KernelRunner execute(Kernel kernel, int globalSize, int passes) {
+      return execute(kernel, Range.create(Device.best(), globalSize), passes);
+   }
+
+   public synchronized KernelRunner execute(Kernel kernel, final Range _range, final int _passes) {
 
       long executeStartTime = System.currentTimeMillis();
 
@@ -922,7 +922,7 @@ public class KernelRunner extends KernelRunnerJNI{
       }
 
       /* for backward compatibility reasons we still honor execution mode */
-      if (kernel.getExecutionMode().isOpenCL()) {
+      if (getExecutionMode().isOpenCL()) {
          // System.out.println("OpenCL");
 
          // See if user supplied a Device
@@ -932,9 +932,9 @@ public class KernelRunner extends KernelRunnerJNI{
             if (entryPoint == null) {
                try {
                   final ClassModel classModel = new ClassModel(kernel.getClass());
-                  entryPoint = classModel.getEntrypoint(_entrypointName, kernel);
+                  entryPoint = classModel.getEntrypoint(kernel);
                } catch (final Exception exception) {
-                  return warnFallBackAndExecute(_entrypointName, _range, _passes, exception);
+                  return warnFallBackAndExecute(kernel, _range, _passes, exception);
                }
 
                if ((entryPoint != null) && !entryPoint.shouldFallback()) {
@@ -947,7 +947,7 @@ public class KernelRunner extends KernelRunnerJNI{
 
                      int jniFlags = 0;
                      if (openCLDevice == null) {
-                        if (kernel.getExecutionMode().equals(EXECUTION_MODE.GPU)) {
+                        if (getExecutionMode().equals(EXECUTION_MODE.GPU)) {
                            // We used to treat as before by getting first GPU device
                            // now we get the best GPU
                            openCLDevice = (OpenCLDevice) OpenCLDevice.best();
@@ -956,7 +956,7 @@ public class KernelRunner extends KernelRunnerJNI{
                            // We fetch the first CPU device 
                            openCLDevice = (OpenCLDevice) OpenCLDevice.firstCPU();
                            if (openCLDevice == null) {
-                              return warnFallBackAndExecute(_entrypointName, _range, _passes,
+                              return warnFallBackAndExecute(kernel, _range, _passes,
                                     "CPU request can't be honored not CPU device");
                            }
                         }
@@ -979,7 +979,7 @@ public class KernelRunner extends KernelRunnerJNI{
                   } // end of synchronized! issue 68
 
                   if (jniContextHandle == 0) {
-                     return warnFallBackAndExecute(_entrypointName, _range, _passes, "initJNI failed to return a valid handle");
+                     return warnFallBackAndExecute(kernel, _range, _passes, "initJNI failed to return a valid handle");
                   }
 
                   final String extensions = getExtensionsJNI(jniContextHandle);
@@ -995,11 +995,11 @@ public class KernelRunner extends KernelRunnerJNI{
                   }
 
                   if (entryPoint.requiresDoublePragma() && !hasFP64Support()) {
-                     return warnFallBackAndExecute(_entrypointName, _range, _passes, "FP64 required but not supported");
+                     return warnFallBackAndExecute(kernel, _range, _passes, "FP64 required but not supported");
                   }
 
                   if (entryPoint.requiresByteAddressableStorePragma() && !hasByteAddressableStoreSupport()) {
-                     return warnFallBackAndExecute(_entrypointName, _range, _passes,
+                     return warnFallBackAndExecute(kernel, _range, _passes,
                            "Byte addressable stores required but not supported");
                   }
 
@@ -1009,14 +1009,14 @@ public class KernelRunner extends KernelRunnerJNI{
 
                   if (entryPoint.requiresAtomic32Pragma() && !all32AtomicsAvailable) {
 
-                     return warnFallBackAndExecute(_entrypointName, _range, _passes, "32 bit Atomics required but not supported");
+                     return warnFallBackAndExecute(kernel, _range, _passes, "32 bit Atomics required but not supported");
                   }
 
                   String openCL = null;
                   try {
                      openCL = KernelWriter.writeToString(entryPoint);
                   } catch (final CodeGenException codeGenException) {
-                     return warnFallBackAndExecute(_entrypointName, _range, _passes, codeGenException);
+                     return warnFallBackAndExecute(kernel, _range, _passes, codeGenException);
                   }
 
                   if (Config.enableShowGeneratedOpenCL) {
@@ -1029,7 +1029,7 @@ public class KernelRunner extends KernelRunnerJNI{
 
                   // Send the string to OpenCL to compile it
                   if (buildProgramJNI(jniContextHandle, openCL) == 0) {
-                     return warnFallBackAndExecute(_entrypointName, _range, _passes, "OpenCL compile failed");
+                     return warnFallBackAndExecute(kernel, _range, _passes, "OpenCL compile failed");
                   }
 
                   args = new KernelArg[entryPoint.getReferencedFields().size()];
@@ -1081,9 +1081,9 @@ public class KernelRunner extends KernelRunnerJNI{
                            } else if (type.getName().startsWith("[[")) {
 
                               try {
-                                 setMultiArrayType(args[i], type);
+                                 setMultiArrayType(kernel, args[i], type);
                               } catch(AparapiException e) {
-                                 return warnFallBackAndExecute(_entrypointName, _range, _passes, "failed to set kernel arguement " + args[i].getName() + ".  Aparapi only supports 2D and 3D arrays.");
+                                 return warnFallBackAndExecute(kernel, _range, _passes, "failed to set kernel arguement " + args[i].getName() + ".  Aparapi only supports 2D and 3D arrays.");
                               }
                            } else {
 
@@ -1162,36 +1162,36 @@ public class KernelRunner extends KernelRunnerJNI{
                   conversionTime = System.currentTimeMillis() - executeStartTime;
 
                   try {
-                     executeOpenCL(_entrypointName, _range, _passes);
+                     executeOpenCL(kernel, _range, _passes);
                   } catch (final AparapiException e) {
-                     warnFallBackAndExecute(_entrypointName, _range, _passes, e);
+                     warnFallBackAndExecute(kernel, _range, _passes, e);
                   }
                } else {
-                  warnFallBackAndExecute(_entrypointName, _range, _passes, "failed to locate entrypoint");
+                  warnFallBackAndExecute(kernel, _range, _passes, "failed to locate entrypoint");
                }
             } else {
                try {
-                  executeOpenCL(_entrypointName, _range, _passes);
+                  executeOpenCL(kernel, _range, _passes);
                } catch (final AparapiException e) {
-                  warnFallBackAndExecute(_entrypointName, _range, _passes, e);
+                  warnFallBackAndExecute(kernel, _range, _passes, e);
                }
             }
          } else {
-            warnFallBackAndExecute(_entrypointName, _range, _passes,
+            warnFallBackAndExecute(kernel, _range, _passes,
                   "OpenCL was requested but Device supplied was not an OpenCLDevice");
          }
       } else {
-         executeJava(_range, _passes);
+         executeJava(kernel, _range, _passes);
       }
 
       if (Config.enableExecutionModeReporting) {
-         System.out.println(kernel.getClass().getCanonicalName() + ":" + kernel.getExecutionMode());
+         System.out.println(kernel.getClass().getCanonicalName() + ":" + getExecutionMode());
       }
 
       executionTime = System.currentTimeMillis() - executeStartTime;
       accumulatedExecutionTime += executionTime;
 
-      return kernel;
+      return this;
    }
 
 
@@ -1216,7 +1216,7 @@ public class KernelRunner extends KernelRunnerJNI{
       return 0;
    }
 
-   private void setMultiArrayType(KernelArg arg, Class<?> type) throws AparapiException {
+   private void setMultiArrayType(Kernel kernel, KernelArg arg, Class<?> type) throws AparapiException {
       arg.setType(arg.getType() | (ARG_WRITE | ARG_READ | ARG_APARAPI_BUFFER));
       int numDims = 0;
       while(type.getName().startsWith("[[[[")) {
@@ -1277,62 +1277,12 @@ public class KernelRunner extends KernelRunnerJNI{
 
    private final Set<Object> puts = new HashSet<Object>();
 
-   /**
-    * Enqueue a request to return this array from the GPU. This method blocks until the array is available.
-    * <br/>
-    * Note that <code>Kernel.put(type [])</code> calls will delegate to this call.
-    * <br/>
-    * Package public
-    * 
-    * @param array
-    *          It is assumed that this parameter is indeed an array (of int, float, short etc).
-    * 
-    * @see Kernel#get(int[] arr)
-    * @see Kernel#get(short[] arr)
-    * @see Kernel#get(float[] arr)
-    * @see Kernel#get(double[] arr)
-    * @see Kernel#get(long[] arr)
-    * @see Kernel#get(char[] arr)
-    * @see Kernel#get(boolean[] arr)
-    */
-   public void get(Object array) {
-      if (explicit
-            && ((kernel.getExecutionMode() == Kernel.EXECUTION_MODE.GPU) || (kernel.getExecutionMode() == Kernel.EXECUTION_MODE.CPU))) {
-         // Only makes sense when we are using OpenCL
-         getJNI(jniContextHandle, array);
-      }
-   }
-
    public List<ProfileInfo> getProfileInfo() {
-      if (((kernel.getExecutionMode() == Kernel.EXECUTION_MODE.GPU) || (kernel.getExecutionMode() == Kernel.EXECUTION_MODE.CPU))) {
+      if (((getExecutionMode() == EXECUTION_MODE.GPU) || (getExecutionMode() == EXECUTION_MODE.CPU))) {
          // Only makes sense when we are using OpenCL
          return (getProfileInfoJNI(jniContextHandle));
       } else {
          return (null);
-      }
-   }
-
-   /**
-    * Tag this array so that it is explicitly enqueued before the kernel is executed. <br/>
-    * Note that <code>Kernel.put(type [])</code> calls will delegate to this call. <br/>
-    * Package public
-    * 
-    * @param array
-    *          It is assumed that this parameter is indeed an array (of int, float, short etc).
-    * @see Kernel#put(int[] arr)
-    * @see Kernel#put(short[] arr)
-    * @see Kernel#put(float[] arr)
-    * @see Kernel#put(double[] arr)
-    * @see Kernel#put(long[] arr)
-    * @see Kernel#put(char[] arr)
-    * @see Kernel#put(boolean[] arr)
-    */
-
-   public void put(Object array) {
-      if (explicit
-            && ((kernel.getExecutionMode() == Kernel.EXECUTION_MODE.GPU) || (kernel.getExecutionMode() == Kernel.EXECUTION_MODE.CPU))) {
-         // Only makes sense when we are using OpenCL
-         puts.add(array);
       }
    }
 
@@ -1374,5 +1324,537 @@ public class KernelRunner extends KernelRunnerJNI{
     */
    public long getAccumulatedExecutionTime() {
       return accumulatedExecutionTime;
+   }
+
+   public EXECUTION_MODE getExecutionMode() {
+      return executionMode;
+   }
+
+   public void setExecutionMode(EXECUTION_MODE executionMode) {
+      this.executionMode = executionMode;
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(long[] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(long[][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(long[][][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(double[] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(double[][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(double[][][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(float[] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(float[][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(float[][][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(int[] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(int[][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(int[][][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(byte[] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(byte[][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(byte[][][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(char[] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(char[][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(char[][][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(boolean[] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(boolean[][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed
+    * @param array array to put
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner put(boolean[][][] array) {
+      putRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(long[] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(long[][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(long[][][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array  array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(double[] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(double[][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(double[][][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(float[] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(float[][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(float[][][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(int[] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(int[][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(int[][][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(byte[] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(byte[][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(byte[][][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(char[] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(char[][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(char[][][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(boolean[] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(boolean[][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+   /**
+    * Enqueue a request to return this buffer from the GPU. This method blocks until the array is available.
+    * @param array  array to get
+    * @return This kernel so that we can use the 'fluent' style API
+    */
+   public KernelRunner get(boolean[][][] array) {
+      getRaw(array);
+      return (this);
+   }
+
+
+   /**
+    * Enqueue a request to return this array from the GPU. This method blocks until the array is available.
+    * <br/>
+    * Note that <code>Kernel.put(type [])</code> calls will delegate to this call.
+    * <br/>
+    * Package public
+    *
+    * @param array
+    *          It is assumed that this parameter is indeed an array (of int, float, short etc).
+    *
+    * @see #get(int[] arr)
+    * @see #get(int[][] arr)
+    * @see #get(int[][][] arr)
+    * @see #get(float[] arr)
+    * @see #get(float[][] arr)
+    * @see #get(float[][][] arr)
+    * @see #get(double[] arr)
+    * @see #get(double[][] arr)
+    * @see #get(double[][][] arr)
+    * @see #get(long[] arr)
+    * @see #get(long[][] arr)
+    * @see #get(long[][][] arr)
+    * @see #get(char[] arr)
+    * @see #get(char[][] arr)
+    * @see #get(char[][][] arr)
+    * @see #get(boolean[] arr)
+    * @see #get(boolean[][] arr)
+    * @see #get(boolean[][][] arr)
+    */
+   private void getRaw(Object array) {
+      if (explicit
+            && ((getExecutionMode() == EXECUTION_MODE.GPU) || (getExecutionMode() == EXECUTION_MODE.CPU))) {
+         // Only makes sense when we are using OpenCL
+         getJNI(jniContextHandle, array);
+      }
+   }
+
+   /**
+    * Tag this array so that it is explicitly enqueued before the kernel is executed. <br/>
+    * Note that <code>Kernel.put(type [])</code> calls will delegate to this call. <br/>
+    * Package public
+    *
+    * @param array
+    *          It is assumed that this parameter is indeed an array (of int, float, short etc).
+    * @see #put(int[] arr)
+    * @see #put(int[][] arr)
+    * @see #put(int[][][] arr)
+    * @see #put(float[] arr)
+    * @see #put(float[][] arr)
+    * @see #put(float[][][] arr)
+    * @see #put(double[] arr)
+    * @see #put(double[][] arr)
+    * @see #put(double[][][] arr)
+    * @see #put(long[] arr)
+    * @see #put(long[][] arr)
+    * @see #put(long[][][] arr)
+    * @see #put(char[] arr)
+    * @see #put(char[][] arr)
+    * @see #put(char[][][] arr)
+    * @see #put(boolean[] arr)
+    * @see #put(boolean[][] arr)
+    * @see #put(boolean[][][] arr)
+    */
+
+   private void putRaw(Object array) {
+      if (explicit
+            && ((getExecutionMode() == EXECUTION_MODE.GPU) || (getExecutionMode() == EXECUTION_MODE.CPU))) {
+         // Only makes sense when we are using OpenCL
+         puts.add(array);
+      }
+   }
+
+   /**
+    * set possible fallback path for execution modes.
+    * for example setExecutionFallbackPath(GPU,CPU,JTP) will try to use the GPU
+    * if it fails it will fall back to OpenCL CPU and finally it will try JTP.
+    */
+   public void addExecutionModes(EXECUTION_MODE... platforms) {
+      executionModes.addAll(Arrays.asList(platforms));
+      currentMode = executionModes.iterator();
+      executionMode = currentMode.next();
+   }
+
+   /**
+    * @return is there another execution path we can try
+    */
+   public boolean hasNextExecutionMode() {
+      return currentMode.hasNext();
+   }
+
+   /**
+    * try the next execution path in the list if there aren't any more than give up
+    */
+   public void tryNextExecutionMode() {
+      if (currentMode.hasNext()) {
+         executionMode = currentMode.next();
+      }
+   }
+
+   public void setFallbackExecutionMode() {
+      executionMode = EXECUTION_MODE.getFallbackExecutionMode();
    }
 }
