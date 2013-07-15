@@ -17,3 +17,4 @@ com.amd.aparapi.jni/ipch
 com.amd.aparapi.jni/x64
 */.idea
 *.iml
+*.class
