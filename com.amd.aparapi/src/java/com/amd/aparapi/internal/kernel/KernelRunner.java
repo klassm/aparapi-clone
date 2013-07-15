@@ -492,6 +492,8 @@ public class KernelRunner extends KernelRunnerJNI {
 
    /**
     *
+    * @param entryPoint
+    * @param kernel
     * @param arg
     * @return
     * @throws AparapiException
