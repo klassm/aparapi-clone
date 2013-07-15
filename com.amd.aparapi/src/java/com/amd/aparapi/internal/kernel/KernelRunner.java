@@ -488,8 +488,6 @@ public class KernelRunner extends KernelRunnerJNI {
       }
    }
 
-   private KernelArg[] args = null;
-
    private boolean usesOopConversion = false;
 
    /**
