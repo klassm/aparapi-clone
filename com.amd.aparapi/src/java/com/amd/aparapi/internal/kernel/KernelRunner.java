@@ -96,6 +96,13 @@ public class KernelRunner extends KernelRunnerJNI {
 
    private EXECUTION_MODE executionMode = currentMode.next();
 
+   private Set<String> capabilitiesSet;
+
+   private long accumulatedExecutionTime = 0;
+
+   private long conversionTime = 0;
+
+   private long executionTime = 0;
 
    /**
     * <code>Kernel.dispose()</code> delegates to <code>KernelRunner.dispose()</code> which delegates to <code>disposeJNI()</code> to actually close JNI data structures.<br/>
@@ -108,14 +115,6 @@ public class KernelRunner extends KernelRunnerJNI {
       }
       threadPool.shutdownNow();
    }
-
-   private Set<String> capabilitiesSet;
-
-   private long accumulatedExecutionTime = 0;
-
-   private long conversionTime = 0;
-
-   private long executionTime = 0;
 
    boolean hasFP64Support() {
       if (capabilitiesSet == null) {

@@ -19,6 +19,9 @@
     <Filter Include="Source Files\invoke">
       <UniqueIdentifier>{e82c094a-4417-42b8-842e-297cb99046ea}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\gpuElement">
+      <UniqueIdentifier>{dfe1bbc2-866d-413b-9d2b-bb5280c3400c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\com_amd_aparapi_KernelRunner.h">
@@ -69,12 +72,6 @@
     <ClInclude Include="src\cpp\runKernel\Aparapi.h">
       <Filter>Source Files\runKernel</Filter>
     </ClInclude>
-    <ClInclude Include="src\cpp\runKernel\AparapiBuffer.h">
-      <Filter>Source Files\runKernel</Filter>
-    </ClInclude>
-    <ClInclude Include="src\cpp\runKernel\ArrayBuffer.h">
-      <Filter>Source Files\runKernel</Filter>
-    </ClInclude>
     <ClInclude Include="src\cpp\runKernel\Config.h">
       <Filter>Source Files\runKernel</Filter>
     </ClInclude>
@@ -92,6 +89,18 @@
     </ClInclude>
     <ClInclude Include="src\cpp\runKernel\Range.h">
       <Filter>Source Files\runKernel</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\AparapiBuffer.h">
+      <Filter>Source Files\gpuElement</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\ArrayBuffer.h">
+      <Filter>Source Files\gpuElement</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\GPUElement.h">
+      <Filter>Source Files\gpuElement</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\PrimitiveElement.h">
+      <Filter>Source Files\gpuElement</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -122,12 +131,6 @@
     <ClCompile Include="src\cpp\runKernel\Aparapi.cpp">
       <Filter>Source Files\runKernel</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\runKernel\AparapiBuffer.cpp">
-      <Filter>Source Files\runKernel</Filter>
-    </ClCompile>
-    <ClCompile Include="src\cpp\runKernel\ArrayBuffer.cpp">
-      <Filter>Source Files\runKernel</Filter>
-    </ClCompile>
     <ClCompile Include="src\cpp\runKernel\Config.cpp">
       <Filter>Source Files\runKernel</Filter>
     </ClCompile>
@@ -142,6 +145,18 @@
     </ClCompile>
     <ClCompile Include="src\cpp\runKernel\Range.cpp">
       <Filter>Source Files\runKernel</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\AparapiBuffer.cpp">
+      <Filter>Source Files\gpuElement</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\ArrayBuffer.cpp">
+      <Filter>Source Files\gpuElement</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\PrimitiveElement.cpp">
+      <Filter>Source Files\gpuElement</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\GPUElement.cpp">
+      <Filter>Source Files\gpuElement</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

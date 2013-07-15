@@ -162,9 +162,11 @@
     <ClInclude Include="src\cpp\runKernel\AparapiBuffer.h" />
     <ClInclude Include="src\cpp\runKernel\ArrayBuffer.h" />
     <ClInclude Include="src\cpp\runKernel\Config.h" />
+    <ClInclude Include="src\cpp\runKernel\GPUElement.h" />
     <ClInclude Include="src\cpp\runKernel\JNIContext.h" />
     <ClInclude Include="src\cpp\runKernel\KernelArg.h" />
     <ClInclude Include="src\cpp\runKernel\List.h" />
+    <ClInclude Include="src\cpp\runKernel\PrimitiveElement.h" />
     <ClInclude Include="src\cpp\runKernel\ProfileInfo.h" />
     <ClInclude Include="src\cpp\runKernel\Range.h" />
   </ItemGroup>
@@ -181,8 +183,10 @@
     <ClCompile Include="src\cpp\runKernel\AparapiBuffer.cpp" />
     <ClCompile Include="src\cpp\runKernel\ArrayBuffer.cpp" />
     <ClCompile Include="src\cpp\runKernel\Config.cpp" />
+    <ClCompile Include="src\cpp\runKernel\GPUElement.cpp" />
     <ClCompile Include="src\cpp\runKernel\JNIContext.cpp" />
     <ClCompile Include="src\cpp\runKernel\KernelArg.cpp" />
+    <ClCompile Include="src\cpp\runKernel\PrimitiveElement.cpp" />
     <ClCompile Include="src\cpp\runKernel\ProfileInfo.cpp" />
     <ClCompile Include="src\cpp\runKernel\Range.cpp" />
   </ItemGroup>
