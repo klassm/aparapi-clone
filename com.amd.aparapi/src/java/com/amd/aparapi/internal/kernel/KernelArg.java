@@ -2,6 +2,7 @@ package com.amd.aparapi.internal.kernel;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.internal.jni.KernelArgJNI;
@@ -259,5 +260,16 @@ public class KernelArg extends KernelArgJNI{
     */
    protected void setDims(int[] dims) {
       this.dims = dims;
+   }
+
+   @Override
+   public String toString() {
+      return "KernelArg{" +
+          "objArrayBuffer=" + Arrays.toString(objArrayBuffer) +
+          ", objArrayByteBuffer=" + objArrayByteBuffer +
+          ", objArrayElementModel=" + objArrayElementModel +
+          ", primitiveBuf=" + primitiveBuf +
+          ", primitiveSize=" + primitiveSize +
+          '}';
    }
 }

@@ -1007,7 +1007,7 @@ public class KernelRunner extends KernelRunnerJNI {
                      return warnFallBackAndExecute(kernel, _range, _passes, "32 bit Atomics required but not supported");
                   }
 
-                  String openCL = null;
+                  String openCL;
                   try {
                      openCL = KernelWriter.writeToString(entryPoint);
                   } catch (final CodeGenException codeGenException) {
@@ -1027,129 +1027,18 @@ public class KernelRunner extends KernelRunnerJNI {
                      return warnFallBackAndExecute(kernel, _range, _passes, "OpenCL compile failed");
                   }
 
-                  for (final Field field : entryPoint.getReferencedFields()) {
-                     KernelArg currentArgument = null;
-                     try {
-                        field.setAccessible(true);
-                        currentArgument = new KernelArg();
-                        currentArgument.setName(field.getName());
-                        currentArgument.setField(field);
-                        if ((field.getModifiers() & Modifier.STATIC) == Modifier.STATIC) {
-                           currentArgument.setType(currentArgument.getType() | ARG_STATIC);
-                        }
-
-                        final Class<?> type = field.getType();
-                        if (type.isArray()) {
-
-                           if (field.getAnnotation(Local.class) != null || currentArgument.getName().endsWith(Local.LOCAL_SUFFIX)) {
-                              currentArgument.setType(currentArgument.getType() | ARG_LOCAL);
-                           } else if ((field.getAnnotation(Constant.class) != null)
-                                 || currentArgument.getName().endsWith(Constant.CONSTANT_SUFFIX)) {
-                              currentArgument.setType(currentArgument.getType() | ARG_CONSTANT);
-                           } else {
-                              currentArgument.setType(currentArgument.getType() | ARG_GLOBAL);
-                           }
-                           if (isExplicit()) {
-                              currentArgument.setType(currentArgument.getType() | ARG_EXPLICIT);
-                           }
-                           // for now, treat all write arrays as read-write, see bugzilla issue 4859
-                           // we might come up with a better solution later
-                           currentArgument.setType(currentArgument.getType()
-                               | (entryPoint.getArrayFieldAssignments().contains(field.getName()) ? (ARG_WRITE | ARG_READ) : 0));
-                           currentArgument.setType(currentArgument.getType()
-                               | (entryPoint.getArrayFieldAccesses().contains(field.getName()) ? ARG_READ : 0));
-                           // args[i].type |= ARG_GLOBAL;
-
-
-                           if (type.getName().startsWith("[L")) {
-                              currentArgument.setType(currentArgument.getType()
-                                  | (ARG_OBJ_ARRAY_STRUCT |
-                                  ARG_WRITE |
-                                  ARG_READ |
-                                  ARG_APARAPI_BUFFER));
-
-                              if (logger.isLoggable(Level.FINE)) {
-                                 logger.fine("tagging " + currentArgument.getName() + " as (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ)");
-                              }
-                           } else if (type.getName().startsWith("[[")) {
-
-                              try {
-                                 setMultiArrayType(kernel, currentArgument, type);
-                              } catch(AparapiException e) {
-                                 return warnFallBackAndExecute(kernel, _range, _passes, "failed to set kernel arguement " + currentArgument.getName() + ".  Aparapi only supports 2D and 3D arrays.");
-                              }
-                           } else {
-
-                              currentArgument.setArray(null); // will get updated in updateKernelArrayRefs
-                              currentArgument.setType(currentArgument.getType() | ARG_ARRAY);
-
-                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(float[].class) ? ARG_FLOAT : 0));
-                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(int[].class) ? ARG_INT : 0));
-                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(boolean[].class) ? ARG_BOOLEAN : 0));
-                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(byte[].class) ? ARG_BYTE : 0));
-                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(char[].class) ? ARG_CHAR : 0));
-                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(double[].class) ? ARG_DOUBLE : 0));
-                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(long[].class) ? ARG_LONG : 0));
-                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(short[].class) ? ARG_SHORT : 0));
-
-                              // arrays whose length is used will have an int arg holding
-                              // the length as a kernel param
-                              if (entryPoint.getArrayFieldArrayLengthUsed().contains(currentArgument.getName())) {
-                                 currentArgument.setType(currentArgument.getType() | ARG_ARRAYLENGTH);
-                              }
-
-                              if (type.getName().startsWith("[L")) {
-                                 currentArgument.setType(currentArgument.getType() | (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ));
-                                 if (logger.isLoggable(Level.FINE)) {
-                                    logger.fine("tagging " + currentArgument.getName() + " as (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ)");
-                                 }
-                              }
-                           }
-                        } else if (type.isAssignableFrom(float.class)) {
-                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
-                           currentArgument.setType(currentArgument.getType() | ARG_FLOAT);
-                        } else if (type.isAssignableFrom(int.class)) {
-                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
-                           currentArgument.setType(currentArgument.getType() | ARG_INT);
-                        } else if (type.isAssignableFrom(double.class)) {
-                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
-                           currentArgument.setType(currentArgument.getType() | ARG_DOUBLE);
-                        } else if (type.isAssignableFrom(long.class)) {
-                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
-                           currentArgument.setType(currentArgument.getType() | ARG_LONG);
-                        } else if (type.isAssignableFrom(boolean.class)) {
-                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
-                           currentArgument.setType(currentArgument.getType() | ARG_BOOLEAN);
-                        } else if (type.isAssignableFrom(byte.class)) {
-                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
-                           currentArgument.setType(currentArgument.getType() | ARG_BYTE);
-                        } else if (type.isAssignableFrom(char.class)) {
-                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
-                           currentArgument.setType(currentArgument.getType() | ARG_CHAR);
-                        } else if (type.isAssignableFrom(short.class)) {
-                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
-                           currentArgument.setType(currentArgument.getType() | ARG_SHORT);
-                        }
-                        // System.out.printf("in execute, arg %d %s %08x\n", i,args[i].name,args[i].type );
-                     } catch (final IllegalArgumentException e) {
-                        e.printStackTrace();
-                     }
-
-                     currentArgument.setPrimitiveSize(getPrimitiveSize(currentArgument.getType()));
-
-                     if (logger.isLoggable(Level.FINE)) {
-                        logger.fine("arg " + currentArgument.getName() + ", type=" + Integer.toHexString(currentArgument.getType())
-                              + ", primitiveSize=" + currentArgument.getPrimitiveSize());
-                     }
-
-                     currentKernelMapping.kernelArgs.add(currentArgument);
+                  List<KernelArg> kernelArgs = findOutKernelArgsIn(entryPoint, kernel);
+                  if (kernelArgs == null) {
+                     return fallBackAndExecute(kernel, _range, _passes);
                   }
+
+                  currentKernelMapping.kernelArgs.addAll(kernelArgs);
 
                   // at this point, i = the actual used number of arguments
                   // (private buffers do not get treated as arguments)
 
-                  KernelArg[] kernelArgs = currentKernelMapping.kernelArgsAsArray();
-                  setArgsJNI(jniContextHandle, kernelArgs, kernelArgs.length);
+                  KernelArg[] kernelArgsArray = currentKernelMapping.kernelArgsAsArray();
+                  setArgsJNI(jniContextHandle, kernelArgsArray, kernelArgsArray.length);
 
                   conversionTime = System.currentTimeMillis() - executeStartTime;
 
@@ -1184,6 +1073,162 @@ public class KernelRunner extends KernelRunnerJNI {
       accumulatedExecutionTime += executionTime;
 
       return this;
+   }
+
+   /**
+    * Turns all referenced fields in a given entryPoint and kernel into a list of {@link KernelArg}s.
+    * @param entryPoint entryPoint
+    * @param kernel kernel
+    * @return list of referenced fields in the form of a list of {@link KernelArg}
+    */
+   private List<KernelArg> findOutKernelArgsIn(Entrypoint entryPoint, Kernel kernel) {
+      List<KernelArg> resultArgs = new ArrayList<KernelArg>();
+
+      for (final Field field : entryPoint.getReferencedFields()) {
+         try {
+            field.setAccessible(true);
+            KernelArg currentArgument = fieldToKernelArg(entryPoint, kernel, field);
+            if (currentArgument == null) return null;
+
+            resultArgs.add(currentArgument);
+         } catch (final IllegalArgumentException e) {
+            logger.log(Level.SEVERE, "IllegalArgumentException encountered during handling of field " + field.toString(), e);
+         }
+      }
+
+      return resultArgs;
+   }
+
+   /**
+    * Fills a new {@link KernelArg} object with data from a given {@link Entrypoint}, {@link Kernel} and {@link Field}.
+    * @param entryPoint entryPoint
+    * @param kernel kernel
+    * @param field field
+    * @return filled {@link KernelArg}
+    */
+   private KernelArg fieldToKernelArg(Entrypoint entryPoint, Kernel kernel, Field field) {
+      KernelArg currentArgument = new KernelArg();
+      currentArgument.setName(field.getName());
+      currentArgument.setField(field);
+      if ((field.getModifiers() & Modifier.STATIC) == Modifier.STATIC) {
+         currentArgument.setType(currentArgument.getType() | ARG_STATIC);
+      }
+
+      final Class<?> type = field.getType();
+      if (type.isArray()) {
+
+         if (! handleArrayTypeKernelArg(entryPoint, kernel, field, currentArgument, type)) return null;
+      } else if (type.isAssignableFrom(float.class)) {
+         currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+         currentArgument.setType(currentArgument.getType() | ARG_FLOAT);
+      } else if (type.isAssignableFrom(int.class)) {
+         currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+         currentArgument.setType(currentArgument.getType() | ARG_INT);
+      } else if (type.isAssignableFrom(double.class)) {
+         currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+         currentArgument.setType(currentArgument.getType() | ARG_DOUBLE);
+      } else if (type.isAssignableFrom(long.class)) {
+         currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+         currentArgument.setType(currentArgument.getType() | ARG_LONG);
+      } else if (type.isAssignableFrom(boolean.class)) {
+         currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+         currentArgument.setType(currentArgument.getType() | ARG_BOOLEAN);
+      } else if (type.isAssignableFrom(byte.class)) {
+         currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+         currentArgument.setType(currentArgument.getType() | ARG_BYTE);
+      } else if (type.isAssignableFrom(char.class)) {
+         currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+         currentArgument.setType(currentArgument.getType() | ARG_CHAR);
+      } else if (type.isAssignableFrom(short.class)) {
+         currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+         currentArgument.setType(currentArgument.getType() | ARG_SHORT);
+      }
+
+      currentArgument.setPrimitiveSize(getPrimitiveSize(currentArgument.getType()));
+
+      if (logger.isLoggable(Level.FINE)) {
+         logger.fine("arg " + currentArgument.getName() + ", type=" + Integer.toHexString(currentArgument.getType())
+             + ", primitiveSize=" + currentArgument.getPrimitiveSize());
+      }
+      return currentArgument;
+   }
+
+   /**
+    * Fill the given {@link KernelArg} with array date in the given field.
+    * @param entryPoint  entryPoint currently handled
+    * @param kernel current kernel
+    * @param field current kernel field
+    * @param kernelArg current kernel arg (result type)
+    * @param type field type
+    * @return true if the array was successfully handled, false if an error has been encountered
+    */
+   private boolean handleArrayTypeKernelArg(Entrypoint entryPoint, Kernel kernel, Field field, KernelArg kernelArg, Class<?> type) {
+      if (field.getAnnotation(Local.class) != null || kernelArg.getName().endsWith(Local.LOCAL_SUFFIX)) {
+         kernelArg.setType(kernelArg.getType() | ARG_LOCAL);
+      } else if ((field.getAnnotation(Constant.class) != null)
+          || kernelArg.getName().endsWith(Constant.CONSTANT_SUFFIX)) {
+         kernelArg.setType(kernelArg.getType() | ARG_CONSTANT);
+      } else {
+         kernelArg.setType(kernelArg.getType() | ARG_GLOBAL);
+      }
+      if (isExplicit()) {
+         kernelArg.setType(kernelArg.getType() | ARG_EXPLICIT);
+      }
+      // for now, treat all write arrays as read-write, see bugzilla issue 4859
+      // we might come up with a better solution later
+      kernelArg.setType(kernelArg.getType()
+          | (entryPoint.getArrayFieldAssignments().contains(field.getName()) ? (ARG_WRITE | ARG_READ) : 0));
+      kernelArg.setType(kernelArg.getType()
+          | (entryPoint.getArrayFieldAccesses().contains(field.getName()) ? ARG_READ : 0));
+      // args[i].type |= ARG_GLOBAL;
+
+
+      if (type.getName().startsWith("[L")) {
+         kernelArg.setType(kernelArg.getType()
+             | (ARG_OBJ_ARRAY_STRUCT |
+             ARG_WRITE |
+             ARG_READ |
+             ARG_APARAPI_BUFFER));
+
+         if (logger.isLoggable(Level.FINE)) {
+            logger.fine("tagging " + kernelArg.getName() + " as (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ)");
+         }
+      } else if (type.getName().startsWith("[[")) {
+
+         try {
+            setMultiArrayType(kernel, kernelArg, type);
+         } catch(AparapiException e) {
+            logger.severe("failed to set kernel arguement " + kernelArg.getName() + ".  Aparapi only supports 2D and 3D arrays.");
+            return false;
+         }
+      } else {
+
+         kernelArg.setArray(null); // will get updated in updateKernelArrayRefs
+         kernelArg.setType(kernelArg.getType() | ARG_ARRAY);
+
+         kernelArg.setType(kernelArg.getType() | (type.isAssignableFrom(float[].class) ? ARG_FLOAT : 0));
+         kernelArg.setType(kernelArg.getType() | (type.isAssignableFrom(int[].class) ? ARG_INT : 0));
+         kernelArg.setType(kernelArg.getType() | (type.isAssignableFrom(boolean[].class) ? ARG_BOOLEAN : 0));
+         kernelArg.setType(kernelArg.getType() | (type.isAssignableFrom(byte[].class) ? ARG_BYTE : 0));
+         kernelArg.setType(kernelArg.getType() | (type.isAssignableFrom(char[].class) ? ARG_CHAR : 0));
+         kernelArg.setType(kernelArg.getType() | (type.isAssignableFrom(double[].class) ? ARG_DOUBLE : 0));
+         kernelArg.setType(kernelArg.getType() | (type.isAssignableFrom(long[].class) ? ARG_LONG : 0));
+         kernelArg.setType(kernelArg.getType() | (type.isAssignableFrom(short[].class) ? ARG_SHORT : 0));
+
+         // arrays whose length is used will have an int arg holding
+         // the length as a kernel param
+         if (entryPoint.getArrayFieldArrayLengthUsed().contains(kernelArg.getName())) {
+            kernelArg.setType(kernelArg.getType() | ARG_ARRAYLENGTH);
+         }
+
+         if (type.getName().startsWith("[L")) {
+            kernelArg.setType(kernelArg.getType() | (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ));
+            if (logger.isLoggable(Level.FINE)) {
+               logger.fine("tagging " + kernelArg.getName() + " as (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ)");
+            }
+         }
+      }
+      return true;
    }
 
 
