@@ -68,15 +68,15 @@ import com.amd.aparapi.opencl.OpenCL;
 
 /**
  * The class is responsible for executing <code>Kernel</code> implementations. <br/>
- * 
+ *
  * The <code>KernelRunner</code> is the real workhorse for Aparapi.  Each <code>Kernel</code> instance creates a single
  * <code>KernelRunner</code> to encapsulate state and to help coordinate interactions between the <code>Kernel</code>
  * and it's execution logic.<br/>
- * 
+ *
  * The <code>KernelRunner</code> is created <i>lazily</i> as a result of calling <code>Kernel.execute()</code>. A this
  * time the <code>ExecutionMode</code> is consulted to determine the default requested mode.  This will dictate how 
  * the <code>KernelRunner</code> will attempt to execute the <code>Kernel</code>
- *   
+ *
  * @author gfrost
  *
  */
@@ -86,10 +86,8 @@ public class KernelRunner extends KernelRunnerJNI {
 
    private long jniContextHandle = 0;
 
-   private Map<Class<? extends Kernel>, Entrypoint> kernelEntryPointMapping = new HashMap<Class<? extends Kernel>, Entrypoint>();
+   private Map<Class<? extends Kernel>, KernelMapping> kernelMappingMap = new HashMap<Class<? extends Kernel>, KernelMapping>();
 
-   private int argc;
-   
    private final ExecutorService threadPool = Executors.newCachedThreadPool();
 
    private final LinkedHashSet<EXECUTION_MODE> executionModes = EXECUTION_MODE.getDefaultExecutionModes();
@@ -101,7 +99,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
    /**
     * <code>Kernel.dispose()</code> delegates to <code>KernelRunner.dispose()</code> which delegates to <code>disposeJNI()</code> to actually close JNI data structures.<br/>
-    * 
+    *
     * @see #disposeJNI(long)
     */
    public void dispose() {
@@ -205,7 +203,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
    /**
     * Execute using a Java thread pool. Either because we were explicitly asked to do so, or because we 'fall back' after discovering an OpenCL issue.
-    * 
+    *
     * @param _range
     *          The globalSize requested by the user (via <code>Kernel.execute(globalSize)</code>)
     * @param _passes
@@ -221,9 +219,9 @@ public class KernelRunner extends KernelRunnerJNI {
          /**
           * SEQ mode is useful for testing trivial logic, but kernels which use SEQ mode cannot be used if the
           * product of localSize(0..3) is >1.  So we can use multi-dim ranges but only if the local size is 1 in all dimensions. 
-          * 
+          *
           * As a result of this barrier is only ever 1 work item wide and probably should be turned into a no-op. 
-          * 
+          *
           * So we need to check if the range is valid here. If not we have no choice but to punt.
           */
          if ((_range.getLocalSize(0) * _range.getLocalSize(1) * _range.getLocalSize(2)) > 1) {
@@ -291,9 +289,9 @@ public class KernelRunner extends KernelRunnerJNI {
           *
           * As with OpenCL all threads within a group must wait at the barrier or none.  It is a user error (possible deadlock!)
           * if the barrier is in a conditional that is only executed by some of the threads within a group.
-          * 
+          *
           * Kernel developer must understand this.
-          * 
+          *
           * This barrier is threadCount wide.  We never hit the barrier from the dispatch thread.
           */
          final CyclicBarrier localBarrier = new CyclicBarrier(threads);
@@ -301,39 +299,39 @@ public class KernelRunner extends KernelRunnerJNI {
          for (int passId = 0; passId < _passes; passId++) {
             /**
               * Note that we emulate OpenCL by creating one thread per localId (across the group).
-              * 
+              *
               * So threadCount == range.getLocalSize(0)*range.getLocalSize(1)*range.getLocalSize(2);
-              * 
+              *
               * For a 1D range of 12 groups of 4 we create 4 threads. One per localId(0).
-              * 
+              *
               * We also clone the kernel 4 times. One per thread.
-              * 
+              *
               * We create local barrier which has a width of 4
-              *         
+              *
               *    Thread-0 handles localId(0) (global 0,4,8)
               *    Thread-1 handles localId(1) (global 1,5,7)
               *    Thread-2 handles localId(2) (global 2,6,10)
               *    Thread-3 handles localId(3) (global 3,7,11)
-              *    
+              *
               * This allows all threads to synchronize using the local barrier.
-              * 
+              *
               * Initially the use of local buffers seems broken as the buffers appears to be per Kernel.
               * Thankfully Kernel.clone() performs a shallow clone of all buffers (local and global)
-              * So each of the cloned kernels actually still reference the same underlying local/global buffers. 
-              * 
+              * So each of the cloned kernels actually still reference the same underlying local/global buffers.
+              *
               * If the kernel uses local buffers but does not use barriers then it is possible for different groups
-              * to see mutations from each other (unlike OpenCL), however if the kernel does not us barriers then it 
-              * cannot assume any coherence in OpenCL mode either (the failure mode will be different but still wrong) 
-              * 
+              * to see mutations from each other (unlike OpenCL), however if the kernel does not us barriers then it
+              * cannot assume any coherence in OpenCL mode either (the failure mode will be different but still wrong)
+              *
               * So even JTP mode use of local buffers will need to use barriers. Not for the same reason as OpenCL but to keep groups in lockstep.
-              * 
+              *
               **/
             for (int id = 0; id < threads; id++) {
                final int threadId = id;
 
                /**
                 *  We clone one kernel for each thread.
-                *  
+                *
                 *  They will all share references to the same range, localBarrier and global/local buffers because the clone is shallow.
                 *  We need clones so that each thread can assign 'state' (localId/globalId/groupId) without worrying 
                 *  about other threads.   
@@ -363,61 +361,61 @@ public class KernelRunner extends KernelRunnerJNI {
                             *                                             localHeight=2
                             *                                             globalWidth=12
                             *                                             globalHeight=4
-                            * 
+                            *
                             *    00 01 02 03 | 04 05 06 07 | 08 09 10 11  
                             *    12 13 14 15 | 16 17 18 19 | 20 21 22 23
                             *    ------------+-------------+------------
                             *    24 25 26 27 | 28 29 30 31 | 32 33 34 35
                             *    36 37 38 39 | 40 41 42 43 | 44 45 46 47  
-                            *    
+                            *
                             *    00 01 02 03 | 00 01 02 03 | 00 01 02 03  threadIds : [0..7]*6
                             *    04 05 06 07 | 04 05 06 07 | 04 05 06 07
                             *    ------------+-------------+------------
                             *    00 01 02 03 | 00 01 02 03 | 00 01 02 03
                             *    04 05 06 07 | 04 05 06 07 | 04 05 06 07  
-                            *    
+                            *
                             *    00 00 00 00 | 01 01 01 01 | 02 02 02 02  groupId[0] : 0..6 
                             *    00 00 00 00 | 01 01 01 01 | 02 02 02 02   
                             *    ------------+-------------+------------
                             *    00 00 00 00 | 01 01 01 01 | 02 02 02 02  
                             *    00 00 00 00 | 01 01 01 01 | 02 02 02 02
-                            *    
+                            *
                             *    00 00 00 00 | 00 00 00 00 | 00 00 00 00  groupId[1] : 0..6 
                             *    00 00 00 00 | 00 00 00 00 | 00 00 00 00   
                             *    ------------+-------------+------------
                             *    01 01 01 01 | 01 01 01 01 | 01 01 01 01 
                             *    01 01 01 01 | 01 01 01 01 | 01 01 01 01
-                            *         
+                            *
                             *    00 01 02 03 | 08 09 10 11 | 16 17 18 19  globalThreadIds == threadId + groupId * threads;
                             *    04 05 06 07 | 12 13 14 15 | 20 21 22 23
                             *    ------------+-------------+------------
                             *    24 25 26 27 | 32[33]34 35 | 40 41 42 43
                             *    28 29 30 31 | 36 37 38 39 | 44 45 46 47   
-                            *          
+                            *
                             *    00 01 02 03 | 00 01 02 03 | 00 01 02 03  localX = threadId % localWidth; (for globalThreadId 33 = threadId = 01 : 01%4 =1)
                             *    00 01 02 03 | 00 01 02 03 | 00 01 02 03   
                             *    ------------+-------------+------------
                             *    00 01 02 03 | 00[01]02 03 | 00 01 02 03 
                             *    00 01 02 03 | 00 01 02 03 | 00 01 02 03
-                            *     
+                            *
                             *    00 00 00 00 | 00 00 00 00 | 00 00 00 00  localY = threadId /localWidth  (for globalThreadId 33 = threadId = 01 : 01/4 =0)
                             *    01 01 01 01 | 01 01 01 01 | 01 01 01 01   
                             *    ------------+-------------+------------
                             *    00 00 00 00 | 00[00]00 00 | 00 00 00 00 
                             *    01 01 01 01 | 01 01 01 01 | 01 01 01 01
-                            *     
+                            *
                             *    00 01 02 03 | 04 05 06 07 | 08 09 10 11  globalX=
                             *    00 01 02 03 | 04 05 06 07 | 08 09 10 11     groupsPerLineWidth=globalWidth/localWidth (=12/4 =3)
                             *    ------------+-------------+------------     groupInset =groupId%groupsPerLineWidth (=4%3 = 1)
                             *    00 01 02 03 | 04[05]06 07 | 08 09 10 11 
                             *    00 01 02 03 | 04 05 06 07 | 08 09 10 11     globalX = groupInset*localWidth+localX (= 1*4+1 = 5)
-                            *     
+                            *
                             *    00 00 00 00 | 00 00 00 00 | 00 00 00 00  globalY
                             *    01 01 01 01 | 01 01 01 01 | 01 01 01 01      
                             *    ------------+-------------+------------
                             *    02 02 02 02 | 02[02]02 02 | 02 02 02 02 
                             *    03 03 03 03 | 03 03 03 03 | 03 03 03 03
-                            *    
+                            *
                             * </pre>
                             * Assume we are trying to locate the id's for #33 
                             *
@@ -495,7 +493,7 @@ public class KernelRunner extends KernelRunnerJNI {
    private boolean usesOopConversion = false;
 
    /**
-    * 
+    *
     * @param arg
     * @return
     * @throws AparapiException
@@ -743,20 +741,18 @@ public class KernelRunner extends KernelRunnerJNI {
       }
    }
 
-   private void restoreObjects(Kernel kernel) throws AparapiException {
-      for (int i = 0; i < argc; i++) {
-         final KernelArg arg = args[i];
+   private void restoreObjects(KernelMapping kernelMapping, Kernel kernel) throws AparapiException {
+      for (KernelArg arg : kernelMapping.kernelArgs) {
          if ((arg.getType() & ARG_OBJ_ARRAY_STRUCT) != 0) {
             extractOopConversionBuffer(kernel, arg);
          }
       }
    }
 
-   private boolean updateKernelArrayRefs(Entrypoint entrypoint, Kernel kernel) throws AparapiException {
+   private boolean updateKernelArrayRefs(KernelMapping kernelMapping, Kernel kernel) throws AparapiException {
       boolean needsSync = false;
 
-      for (int i = 0; i < argc; i++) {
-         final KernelArg arg = args[i];
+      for (KernelArg arg : kernelMapping.kernelArgs) {
          try {
             if ((arg.getType() & ARG_ARRAY) != 0) {
                Object newArrayRef;
@@ -767,15 +763,15 @@ public class KernelRunner extends KernelRunnerJNI {
                }
 
                if ((arg.getType() & ARG_OBJ_ARRAY_STRUCT) != 0) {
-                  prepareOopConversionBuffer(entrypoint, kernel, arg);
+                  prepareOopConversionBuffer(kernelMapping.entryPoint, kernel, arg);
                } else {
                   // set up JNI fields for normal arrays
                   arg.setJavaArray(newArrayRef);
                   arg.setNumElements(Array.getLength(newArrayRef));
                   arg.setSizeInBytes(arg.getNumElements() * arg.getPrimitiveSize());
 
-                  if (((args[i].getType() & ARG_EXPLICIT) != 0) && puts.contains(newArrayRef)) {
-                     args[i].setType(args[i].getType() | ARG_EXPLICIT_WRITE);
+                  if (((arg.getType() & ARG_EXPLICIT) != 0) && puts.contains(newArrayRef)) {
+                     arg.setType(arg.getType() | ARG_EXPLICIT_WRITE);
                      // System.out.println("detected an explicit write " + args[i].name);
                      puts.remove(newArrayRef);
                   }
@@ -794,9 +790,9 @@ public class KernelRunner extends KernelRunnerJNI {
                assert arg.getArray() != null : "null array ref";
             }
          } catch (final IllegalArgumentException e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "IllegalArgumentException during update kernel refs", e);
          } catch (final IllegalAccessException e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "IllegalAccessException during update kernel refs", e);
          }
       }
       return needsSync;
@@ -804,7 +800,8 @@ public class KernelRunner extends KernelRunnerJNI {
 
    // private int numAvailableProcessors = Runtime.getRuntime().availableProcessors();
 
-   private KernelRunner executeOpenCL(final Kernel kernel, Entrypoint entrypoint, final Range _range, final int _passes) throws AparapiException {
+   private KernelRunner executeOpenCL(final Kernel kernel, KernelMapping kernelMapping,
+                                      final Range _range, final int _passes) throws AparapiException {
       /*
       if (_range.getDims() > getMaxWorkItemDimensionsJNI(jniContextHandle)) {
          throw new RangeException("Range dim size " + _range.getDims() + " > device "
@@ -848,8 +845,7 @@ public class KernelRunner extends KernelRunnerJNI {
       */
       // Read the array refs after kernel may have changed them
       // We need to do this as input to computing the localSize
-      assert args != null : "args should not be null";
-      final boolean needSync = updateKernelArrayRefs(entrypoint, kernel);
+      final boolean needSync = updateKernelArrayRefs(kernelMapping, kernel);
       if (needSync && logger.isLoggable(Level.FINE)) {
          logger.fine("Need to resync arrays on " + kernel.getClass().getName());
       }
@@ -862,7 +858,7 @@ public class KernelRunner extends KernelRunnerJNI {
       }
 
       if (usesOopConversion) {
-         restoreObjects(kernel);
+         restoreObjects(kernelMapping, kernel);
       }
 
       if (logger.isLoggable(Level.FINE)) {
@@ -919,23 +915,23 @@ public class KernelRunner extends KernelRunnerJNI {
       /* for backward compatibility reasons we still honor execution mode */
       if (getExecutionMode().isOpenCL()) {
 
-         Entrypoint entryPoint = kernelEntryPointMapping.get(kernel.getClass());
-
-         // System.out.println("OpenCL");
+         KernelMapping currentKernelMapping = kernelMappingMap.get(kernel.getClass());
 
          // See if user supplied a Device
          Device device = _range.getDevice();
 
          if ((device == null) || (device instanceof OpenCLDevice)) {
-            if (entryPoint == null) {
+            if (currentKernelMapping == null) {
                try {
                   final ClassModel classModel = new ClassModel(kernel.getClass());
-                  entryPoint = classModel.getEntrypoint(kernel);
-                  kernelEntryPointMapping.put(kernel.getClass(), entryPoint);
+                  Entrypoint entryPoint = classModel.getEntrypoint(kernel);
+                  currentKernelMapping = new KernelMapping(kernel.getClass(), entryPoint);
+                  kernelMappingMap.put(kernel.getClass(), currentKernelMapping);
                } catch (final Exception exception) {
                   return warnFallBackAndExecute(kernel, _range, _passes, exception);
                }
 
+               Entrypoint entryPoint = currentKernelMapping.entryPoint;
                if ((entryPoint != null) && !entryPoint.shouldFallback()) {
                   synchronized (Kernel.class) { // This seems to be needed because of a race condition uncovered with issue #68 http://code.google.com/p/aparapi/issues/detail?id=68
                      if (device != null && !(device instanceof OpenCLDevice)) {
@@ -1031,137 +1027,134 @@ public class KernelRunner extends KernelRunnerJNI {
                      return warnFallBackAndExecute(kernel, _range, _passes, "OpenCL compile failed");
                   }
 
-                  args = new KernelArg[entryPoint.getReferencedFields().size()];
-                  int i = 0;
-
                   for (final Field field : entryPoint.getReferencedFields()) {
+                     KernelArg currentArgument = null;
                      try {
                         field.setAccessible(true);
-                        args[i] = new KernelArg();
-                        args[i].setName(field.getName());
-                        args[i].setField(field);
+                        currentArgument = new KernelArg();
+                        currentArgument.setName(field.getName());
+                        currentArgument.setField(field);
                         if ((field.getModifiers() & Modifier.STATIC) == Modifier.STATIC) {
-                           args[i].setType(args[i].getType() | ARG_STATIC);
+                           currentArgument.setType(currentArgument.getType() | ARG_STATIC);
                         }
 
                         final Class<?> type = field.getType();
                         if (type.isArray()) {
 
-                           if (field.getAnnotation(Local.class) != null || args[i].getName().endsWith(Local.LOCAL_SUFFIX)) {
-                              args[i].setType(args[i].getType() | ARG_LOCAL);
+                           if (field.getAnnotation(Local.class) != null || currentArgument.getName().endsWith(Local.LOCAL_SUFFIX)) {
+                              currentArgument.setType(currentArgument.getType() | ARG_LOCAL);
                            } else if ((field.getAnnotation(Constant.class) != null)
-                                 || args[i].getName().endsWith(Constant.CONSTANT_SUFFIX)) {
-                              args[i].setType(args[i].getType() | ARG_CONSTANT);
+                                 || currentArgument.getName().endsWith(Constant.CONSTANT_SUFFIX)) {
+                              currentArgument.setType(currentArgument.getType() | ARG_CONSTANT);
                            } else {
-                              args[i].setType(args[i].getType() | ARG_GLOBAL);
+                              currentArgument.setType(currentArgument.getType() | ARG_GLOBAL);
                            }
                            if (isExplicit()) {
-                              args[i].setType(args[i].getType() | ARG_EXPLICIT);
+                              currentArgument.setType(currentArgument.getType() | ARG_EXPLICIT);
                            }
                            // for now, treat all write arrays as read-write, see bugzilla issue 4859
                            // we might come up with a better solution later
-                           args[i].setType(args[i].getType()
-                                 | (entryPoint.getArrayFieldAssignments().contains(field.getName()) ? (ARG_WRITE | ARG_READ) : 0));
-                           args[i].setType(args[i].getType()
-                                 | (entryPoint.getArrayFieldAccesses().contains(field.getName()) ? ARG_READ : 0));
+                           currentArgument.setType(currentArgument.getType()
+                               | (entryPoint.getArrayFieldAssignments().contains(field.getName()) ? (ARG_WRITE | ARG_READ) : 0));
+                           currentArgument.setType(currentArgument.getType()
+                               | (entryPoint.getArrayFieldAccesses().contains(field.getName()) ? ARG_READ : 0));
                            // args[i].type |= ARG_GLOBAL;
 
 
                            if (type.getName().startsWith("[L")) {
-                              args[i].setType(args[i].getType()
-                                    | (ARG_OBJ_ARRAY_STRUCT | 
-                                       ARG_WRITE | 
-                                       ARG_READ | 
-                                       ARG_APARAPI_BUFFER));
+                              currentArgument.setType(currentArgument.getType()
+                                  | (ARG_OBJ_ARRAY_STRUCT |
+                                  ARG_WRITE |
+                                  ARG_READ |
+                                  ARG_APARAPI_BUFFER));
 
                               if (logger.isLoggable(Level.FINE)) {
-                                 logger.fine("tagging " + args[i].getName() + " as (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ)");
+                                 logger.fine("tagging " + currentArgument.getName() + " as (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ)");
                               }
                            } else if (type.getName().startsWith("[[")) {
 
                               try {
-                                 setMultiArrayType(kernel, args[i], type);
+                                 setMultiArrayType(kernel, currentArgument, type);
                               } catch(AparapiException e) {
-                                 return warnFallBackAndExecute(kernel, _range, _passes, "failed to set kernel arguement " + args[i].getName() + ".  Aparapi only supports 2D and 3D arrays.");
+                                 return warnFallBackAndExecute(kernel, _range, _passes, "failed to set kernel arguement " + currentArgument.getName() + ".  Aparapi only supports 2D and 3D arrays.");
                               }
                            } else {
 
-                              args[i].setArray(null); // will get updated in updateKernelArrayRefs
-                              args[i].setType(args[i].getType() | ARG_ARRAY);
+                              currentArgument.setArray(null); // will get updated in updateKernelArrayRefs
+                              currentArgument.setType(currentArgument.getType() | ARG_ARRAY);
 
-                              args[i].setType(args[i].getType() | (type.isAssignableFrom(float[].class) ? ARG_FLOAT : 0));
-                              args[i].setType(args[i].getType() | (type.isAssignableFrom(int[].class) ? ARG_INT : 0));
-                              args[i].setType(args[i].getType() | (type.isAssignableFrom(boolean[].class) ? ARG_BOOLEAN : 0));
-                              args[i].setType(args[i].getType() | (type.isAssignableFrom(byte[].class) ? ARG_BYTE : 0));
-                              args[i].setType(args[i].getType() | (type.isAssignableFrom(char[].class) ? ARG_CHAR : 0));
-                              args[i].setType(args[i].getType() | (type.isAssignableFrom(double[].class) ? ARG_DOUBLE : 0));
-                              args[i].setType(args[i].getType() | (type.isAssignableFrom(long[].class) ? ARG_LONG : 0));
-                              args[i].setType(args[i].getType() | (type.isAssignableFrom(short[].class) ? ARG_SHORT : 0));
+                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(float[].class) ? ARG_FLOAT : 0));
+                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(int[].class) ? ARG_INT : 0));
+                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(boolean[].class) ? ARG_BOOLEAN : 0));
+                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(byte[].class) ? ARG_BYTE : 0));
+                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(char[].class) ? ARG_CHAR : 0));
+                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(double[].class) ? ARG_DOUBLE : 0));
+                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(long[].class) ? ARG_LONG : 0));
+                              currentArgument.setType(currentArgument.getType() | (type.isAssignableFrom(short[].class) ? ARG_SHORT : 0));
 
                               // arrays whose length is used will have an int arg holding
                               // the length as a kernel param
-                              if (entryPoint.getArrayFieldArrayLengthUsed().contains(args[i].getName())) {
-                                 args[i].setType(args[i].getType() | ARG_ARRAYLENGTH);
+                              if (entryPoint.getArrayFieldArrayLengthUsed().contains(currentArgument.getName())) {
+                                 currentArgument.setType(currentArgument.getType() | ARG_ARRAYLENGTH);
                               }
 
                               if (type.getName().startsWith("[L")) {
-                                 args[i].setType(args[i].getType() | (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ));
+                                 currentArgument.setType(currentArgument.getType() | (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ));
                                  if (logger.isLoggable(Level.FINE)) {
-                                    logger.fine("tagging " + args[i].getName() + " as (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ)");
+                                    logger.fine("tagging " + currentArgument.getName() + " as (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ)");
                                  }
                               }
                            }
                         } else if (type.isAssignableFrom(float.class)) {
-                           args[i].setType(args[i].getType() | ARG_PRIMITIVE);
-                           args[i].setType(args[i].getType() | ARG_FLOAT);
+                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+                           currentArgument.setType(currentArgument.getType() | ARG_FLOAT);
                         } else if (type.isAssignableFrom(int.class)) {
-                           args[i].setType(args[i].getType() | ARG_PRIMITIVE);
-                           args[i].setType(args[i].getType() | ARG_INT);
+                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+                           currentArgument.setType(currentArgument.getType() | ARG_INT);
                         } else if (type.isAssignableFrom(double.class)) {
-                           args[i].setType(args[i].getType() | ARG_PRIMITIVE);
-                           args[i].setType(args[i].getType() | ARG_DOUBLE);
+                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+                           currentArgument.setType(currentArgument.getType() | ARG_DOUBLE);
                         } else if (type.isAssignableFrom(long.class)) {
-                           args[i].setType(args[i].getType() | ARG_PRIMITIVE);
-                           args[i].setType(args[i].getType() | ARG_LONG);
+                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+                           currentArgument.setType(currentArgument.getType() | ARG_LONG);
                         } else if (type.isAssignableFrom(boolean.class)) {
-                           args[i].setType(args[i].getType() | ARG_PRIMITIVE);
-                           args[i].setType(args[i].getType() | ARG_BOOLEAN);
+                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+                           currentArgument.setType(currentArgument.getType() | ARG_BOOLEAN);
                         } else if (type.isAssignableFrom(byte.class)) {
-                           args[i].setType(args[i].getType() | ARG_PRIMITIVE);
-                           args[i].setType(args[i].getType() | ARG_BYTE);
+                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+                           currentArgument.setType(currentArgument.getType() | ARG_BYTE);
                         } else if (type.isAssignableFrom(char.class)) {
-                           args[i].setType(args[i].getType() | ARG_PRIMITIVE);
-                           args[i].setType(args[i].getType() | ARG_CHAR);
+                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+                           currentArgument.setType(currentArgument.getType() | ARG_CHAR);
                         } else if (type.isAssignableFrom(short.class)) {
-                           args[i].setType(args[i].getType() | ARG_PRIMITIVE);
-                           args[i].setType(args[i].getType() | ARG_SHORT);
+                           currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
+                           currentArgument.setType(currentArgument.getType() | ARG_SHORT);
                         }
                         // System.out.printf("in execute, arg %d %s %08x\n", i,args[i].name,args[i].type );
                      } catch (final IllegalArgumentException e) {
                         e.printStackTrace();
                      }
 
-                     args[i].setPrimitiveSize(getPrimitiveSize(args[i].getType()));
+                     currentArgument.setPrimitiveSize(getPrimitiveSize(currentArgument.getType()));
 
                      if (logger.isLoggable(Level.FINE)) {
-                        logger.fine("arg " + i + ", " + args[i].getName() + ", type=" + Integer.toHexString(args[i].getType())
-                              + ", primitiveSize=" + args[i].getPrimitiveSize());
+                        logger.fine("arg " + currentArgument.getName() + ", type=" + Integer.toHexString(currentArgument.getType())
+                              + ", primitiveSize=" + currentArgument.getPrimitiveSize());
                      }
 
-                     i++;
+                     currentKernelMapping.kernelArgs.add(currentArgument);
                   }
 
                   // at this point, i = the actual used number of arguments
                   // (private buffers do not get treated as arguments)
 
-                  argc = i;
-
-                  setArgsJNI(jniContextHandle, args, argc);
+                  KernelArg[] kernelArgs = currentKernelMapping.kernelArgsAsArray();
+                  setArgsJNI(jniContextHandle, kernelArgs, kernelArgs.length);
 
                   conversionTime = System.currentTimeMillis() - executeStartTime;
 
                   try {
-                     executeOpenCL(kernel, entryPoint, _range, _passes);
+                     executeOpenCL(kernel, currentKernelMapping, _range, _passes);
                   } catch (final AparapiException e) {
                      warnFallBackAndExecute(kernel, _range, _passes, e);
                   }
@@ -1170,7 +1163,7 @@ public class KernelRunner extends KernelRunnerJNI {
                }
             } else {
                try {
-                  executeOpenCL(kernel, entryPoint, _range, _passes);
+                  executeOpenCL(kernel, currentKernelMapping, _range, _passes);
                } catch (final AparapiException e) {
                   warnFallBackAndExecute(kernel, _range, _passes, e);
                }
@@ -1218,7 +1211,7 @@ public class KernelRunner extends KernelRunnerJNI {
    private void setMultiArrayType(Kernel kernel, KernelArg arg, Class<?> type) throws AparapiException {
       arg.setType(arg.getType() | (ARG_WRITE | ARG_READ | ARG_APARAPI_BUFFER));
       int numDims = 0;
-      while(type.getName().startsWith("[[[[")) {
+      if(type.getName().startsWith("[[[[")) {
          throw new AparapiException("Aparapi only supports 2D and 3D arrays.");
       }
       arg.setType(arg.getType() | ARG_ARRAYLENGTH);
@@ -1297,9 +1290,9 @@ public class KernelRunner extends KernelRunnerJNI {
 
    /**
     * Determine the time taken to convert bytecode to OpenCL for first Kernel.execute(range) call.
-    * 
+    *
     * @return The time spent preparing the kernel for execution using GPU
-    * 
+    *
     */
    public long getConversionTime() {
       return conversionTime;
@@ -1307,9 +1300,9 @@ public class KernelRunner extends KernelRunnerJNI {
 
    /**
     * Determine the execution time of the previous Kernel.execute(range) call.
-    * 
+    *
     * @return The time spent executing the kernel (ms)
-    * 
+    *
     */
    public long getExecutionTime() {
       return executionTime;
@@ -1317,9 +1310,9 @@ public class KernelRunner extends KernelRunnerJNI {
 
    /**
     * Determine the accumulated execution time of all previous Kernel.execute(range) calls.
-    * 
+    *
     * @return The accumulated time spent executing this kernel (ms)
-    * 
+    *
     */
    public long getAccumulatedExecutionTime() {
       return accumulatedExecutionTime;
