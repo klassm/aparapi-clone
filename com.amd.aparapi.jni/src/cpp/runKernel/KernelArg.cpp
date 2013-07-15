@@ -14,8 +14,7 @@ jfieldID KernelArg::javaArrayFieldID=0;
 jfieldID KernelArg::sizeInBytesFieldID=0;
 jfieldID KernelArg::numElementsFieldID=0; 
 
-KernelArg::KernelArg(JNIEnv *jenv, JNIContext *jniContext, jobject argObj):
-   jniContext(jniContext),
+KernelArg::KernelArg(JNIEnv *jenv, jobject argObj):
    argObj(argObj){
       javaArg = jenv->NewGlobalRef(argObj);   // save a global ref to the java Arg Object
       if (argClazz == 0){
@@ -38,20 +37,6 @@ KernelArg::KernelArg(JNIEnv *jenv, JNIContext *jniContext, jobject argObj):
          aparapiBuffer = AparapiBuffer::flatten(jenv, argObj, type);
       }
    }
-
-cl_int KernelArg::setLocalBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose) {
-   if (verbose){
-       fprintf(stderr, "ISLOCAL, clSetKernelArg(jniContext->kernel, %d, %d, NULL);\n", argIdx, (int) arrayBuffer->lengthInBytes);
-   }
-   return(clSetKernelArg(jniContext->kernel, argPos, (int)arrayBuffer->lengthInBytes, NULL));
-}
-
-cl_int KernelArg::setLocalAparapiBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose) {
-   if (verbose){
-       fprintf(stderr, "ISLOCAL, clSetKernelArg(jniContext->kernel, %d, %d, NULL);\n", argIdx, (int) aparapiBuffer->lengthInBytes);
-   }
-   return(clSetKernelArg(jniContext->kernel, argPos, (int)aparapiBuffer->lengthInBytes, NULL));
-}
 
 const char* KernelArg::getTypeName() {
    string s = "";

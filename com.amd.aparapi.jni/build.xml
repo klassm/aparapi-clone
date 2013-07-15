@@ -89,8 +89,8 @@ First consider editing the properties in build.properties
          </and>
       </condition>
       
-      <available property="msvc.64.10.0.exists" file="c:/Program Files/Microsoft Visual Studio 10.0\vc\bin" type="dir"/>
-      <condition property="msvc.dir" value="c:/Program Files/Microsoft Visual Studio 10.0">
+      <available property="msvc.64.10.0.exists" file="D:\Programme\VisualStudio2012\vc\bin" type="dir"/>
+      <condition property="msvc.dir" value="D:\Programme\VisualStudio2012">
          <and>
             <or>
                <os arch="x86" />
@@ -107,8 +107,8 @@ First consider editing the properties in build.properties
          </and>
       </condition>
       
-      <available property="msvc.32.10.0.exists" file="c:/Program Files (x86)/Microsoft Visual Studio 10.0\vc\bin" type="dir"/>
-      <condition property="msvc.dir" value="c:/Program Files (x86)/Microsoft Visual Studio 10.0">
+      <available property="msvc.32.10.0.exists" file="D:\Programme\Microsoft Visual Studio 10.0\VC\bin" type="dir"/>
+      <condition property="msvc.dir" value="D:\Programme\Microsoft Visual Studio 10.0">
          <and>
             <not>
                <or>
@@ -127,8 +127,8 @@ First consider editing the properties in build.properties
          </and>
       </condition>
       
-      <available property="msvc.32.9.0.exists" file="c:/Program Files/Microsoft Visual Studio 9.0\vc\bin" type="dir"/>
-      <condition property="msvc.dir" value="c:/Program Files/Microsoft Visual Studio 9.0">
+      <available property="msvc.32.9.0.exists" file="D:\Programme\Microsoft Visual Studio 10.0\VC\bin" type="dir"/>
+      <condition property="msvc.dir" value="D:\Programme\Microsoft Visual Studio 10.0">
          <and>
             <or>
                <os arch="x86" />

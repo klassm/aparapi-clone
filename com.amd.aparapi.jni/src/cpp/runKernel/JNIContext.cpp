@@ -129,3 +129,17 @@ void JNIContext::unpinAll(JNIEnv* jenv) {
    }
 }
 
+cl_int JNIContext::setLocalBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose, KernelArg *kernelArg) {
+   if (verbose){
+       fprintf(stderr, "ISLOCAL, clSetKernelArg(jniContext->kernel, %d, %d, NULL);\n", argIdx, (int) kernelArg->arrayBuffer->lengthInBytes);
+   }
+   return(clSetKernelArg(this->kernel, argPos, (int)kernelArg->arrayBuffer->lengthInBytes, NULL));
+}
+
+cl_int JNIContext::setLocalAparapiBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose, KernelArg *kernelArg) {
+   if (verbose){
+       fprintf(stderr, "ISLOCAL, clSetKernelArg(jniContext->kernel, %d, %d, NULL);\n", argIdx, (int) kernelArg->aparapiBuffer->lengthInBytes);
+   }
+   return(clSetKernelArg(this->kernel, argPos, (int)kernelArg->aparapiBuffer->lengthInBytes, NULL));
+}
+

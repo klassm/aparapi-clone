@@ -13,20 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\cpp\aparapi.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\cpp\jniHelper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\cpp\clHelper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\cpp\opencljni.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <Filter Include="Source Files\runKernel">
+      <UniqueIdentifier>{de8f6dce-68c8-4868-8200-a23a9cb58bd3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\invoke">
+      <UniqueIdentifier>{e82c094a-4417-42b8-842e-297cb99046ea}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\com_amd_aparapi_KernelRunner.h">
@@ -50,5 +42,106 @@
     <ClInclude Include="include\com_amd_aparapi_OpenCLJNI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\cpp\classtools.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\CLException.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\invoke\JavaArgs.h">
+      <Filter>Source Files\invoke</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\invoke\OpenCLArgDescriptor.h">
+      <Filter>Source Files\invoke</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\invoke\OpenCLJNI.h">
+      <Filter>Source Files\invoke</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\invoke\OpenCLKernel.h">
+      <Filter>Source Files\invoke</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\invoke\OpenCLMem.h">
+      <Filter>Source Files\invoke</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\invoke\OpenCLProgram.h">
+      <Filter>Source Files\invoke</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\Aparapi.h">
+      <Filter>Source Files\runKernel</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\AparapiBuffer.h">
+      <Filter>Source Files\runKernel</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\ArrayBuffer.h">
+      <Filter>Source Files\runKernel</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\Config.h">
+      <Filter>Source Files\runKernel</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\JNIContext.h">
+      <Filter>Source Files\runKernel</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\KernelArg.h">
+      <Filter>Source Files\runKernel</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\List.h">
+      <Filter>Source Files\runKernel</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\ProfileInfo.h">
+      <Filter>Source Files\runKernel</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\Range.h">
+      <Filter>Source Files\runKernel</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\cpp\agent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\classtools.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\CLHelper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\cltest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\JNIHelper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\invoke\OpenCLArgDescriptor.cpp">
+      <Filter>Source Files\invoke</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\invoke\OpenCLJNI.cpp">
+      <Filter>Source Files\invoke</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\invoke\OpenCLMem.cpp">
+      <Filter>Source Files\invoke</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\Aparapi.cpp">
+      <Filter>Source Files\runKernel</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\AparapiBuffer.cpp">
+      <Filter>Source Files\runKernel</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\ArrayBuffer.cpp">
+      <Filter>Source Files\runKernel</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\Config.cpp">
+      <Filter>Source Files\runKernel</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\JNIContext.cpp">
+      <Filter>Source Files\runKernel</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\KernelArg.cpp">
+      <Filter>Source Files\runKernel</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\ProfileInfo.cpp">
+      <Filter>Source Files\runKernel</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\Range.cpp">
+      <Filter>Source Files\runKernel</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

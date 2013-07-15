@@ -73,7 +73,7 @@ class KernelArg{
       AparapiBuffer *aparapiBuffer;
 
       // Uses JNIContext so cant inline here see below
-      KernelArg(JNIEnv *jenv, JNIContext *jniContext, jobject argObj);
+      KernelArg(JNIEnv *jenv, jobject argObj);
 
       ~KernelArg(){
       }
@@ -188,9 +188,6 @@ class KernelArg{
       // Uses JNIContext so can't inline here we below.  
       void syncValue(JNIEnv *jenv);
 
-      // Uses JNIContext so can't inline here we below.  
-      cl_int setLocalBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose);
-      cl_int setLocalAparapiBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose);
       // Uses JNIContext so can't inline here we below.  
       cl_int setPrimitiveArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose);
 };

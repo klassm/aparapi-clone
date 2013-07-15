@@ -5,9 +5,17 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -20,7 +28,17 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v110</PlatformToolset>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v100</PlatformToolset>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v110</PlatformToolset>
@@ -31,7 +49,13 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -40,7 +64,16 @@
     <TargetName>aparapi_x86</TargetName>
     <OutDir>.\dist\</OutDir>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <TargetName>aparapi_x86</TargetName>
+    <OutDir>.\dist\</OutDir>
+    <IncludePath>G:\dev\aparapi-clone\com.amd.aparapi.jni\include;G:\dev\aparapi-clone\com.amd.aparapi.jni\src\cpp\invoke;G:\dev\aparapi-clone\com.amd.aparapi.jni\src\cpp\runKernel;G:\dev\aparapi-clone\com.amd.aparapi.jni\src\cpp;$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -61,6 +94,23 @@
       <OutputFile>dist\aparapi_x86.dll</OutputFile>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_WINDOWS;_USRDLL;APARAPI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>D:\Programme\Microsoft Visual Studio 10.0\VC\include;C:\Program Files\Java\jdk1.7.0_25\include;C:\Program Files\Java\jdk1.7.0_25\include\win32;include;C:\Program Files %28x86%29\AMD APP\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\AMD APP\lib\x86_64;D:\Programme\Microsoft Visual Studio 10.0\VC\lib\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OpenCL.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>dist\aparapi_x86.dll</OutputFile>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;APARAPI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -77,20 +127,64 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="src\cpp\aparapi.cpp" />
-    <ClCompile Include="src\cpp\clHelper.cpp" />
-    <ClCompile Include="src\cpp\jniHelper.cpp" />
-    <ClCompile Include="src\cpp\opencljni.cpp" />
-  </ItemGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;APARAPI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Program Files\AMD APP\include\CL C:\Program Files\Java\jdk1.6.0_26\include C:\Program Files\Java\jdk1.6.0_26\include\x86;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\com_amd_aparapi_KernelRunner.h" />
     <ClInclude Include="include\com_amd_aparapi_OpenCLJNI.h" />
     <ClInclude Include="src\cpp\aparapi.h" />
+    <ClInclude Include="src\cpp\classtools.h" />
+    <ClInclude Include="src\cpp\CLException.h" />
     <ClInclude Include="src\cpp\clHelper.h" />
     <ClInclude Include="src\cpp\common.h" />
+    <ClInclude Include="src\cpp\invoke\JavaArgs.h" />
+    <ClInclude Include="src\cpp\invoke\OpenCLArgDescriptor.h" />
+    <ClInclude Include="src\cpp\invoke\OpenCLJNI.h" />
+    <ClInclude Include="src\cpp\invoke\OpenCLKernel.h" />
+    <ClInclude Include="src\cpp\invoke\OpenCLMem.h" />
+    <ClInclude Include="src\cpp\invoke\OpenCLProgram.h" />
     <ClInclude Include="src\cpp\jniHelper.h" />
     <ClInclude Include="src\cpp\opencljni.h" />
+    <ClInclude Include="src\cpp\runKernel\Aparapi.h" />
+    <ClInclude Include="src\cpp\runKernel\AparapiBuffer.h" />
+    <ClInclude Include="src\cpp\runKernel\ArrayBuffer.h" />
+    <ClInclude Include="src\cpp\runKernel\Config.h" />
+    <ClInclude Include="src\cpp\runKernel\JNIContext.h" />
+    <ClInclude Include="src\cpp\runKernel\KernelArg.h" />
+    <ClInclude Include="src\cpp\runKernel\List.h" />
+    <ClInclude Include="src\cpp\runKernel\ProfileInfo.h" />
+    <ClInclude Include="src\cpp\runKernel\Range.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\cpp\agent.cpp" />
+    <ClCompile Include="src\cpp\classtools.cpp" />
+    <ClCompile Include="src\cpp\CLHelper.cpp" />
+    <ClCompile Include="src\cpp\cltest.cpp" />
+    <ClCompile Include="src\cpp\invoke\OpenCLArgDescriptor.cpp" />
+    <ClCompile Include="src\cpp\invoke\OpenCLJNI.cpp" />
+    <ClCompile Include="src\cpp\invoke\OpenCLMem.cpp" />
+    <ClCompile Include="src\cpp\JNIHelper.cpp" />
+    <ClCompile Include="src\cpp\runKernel\Aparapi.cpp" />
+    <ClCompile Include="src\cpp\runKernel\AparapiBuffer.cpp" />
+    <ClCompile Include="src\cpp\runKernel\ArrayBuffer.cpp" />
+    <ClCompile Include="src\cpp\runKernel\Config.cpp" />
+    <ClCompile Include="src\cpp\runKernel\JNIContext.cpp" />
+    <ClCompile Include="src\cpp\runKernel\KernelArg.cpp" />
+    <ClCompile Include="src\cpp\runKernel\ProfileInfo.cpp" />
+    <ClCompile Include="src\cpp\runKernel\Range.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

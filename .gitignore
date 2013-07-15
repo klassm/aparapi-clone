@@ -1,0 +1,17 @@
+com.amd.aparapi.jni/build.xml
+*.sln
+*.suo
+*.vcxproj*
+*.exp
+*.lib
+*.obj
+*.opensdf
+*.sdf
+*.zip
+dist*
+*.jar
+classes
+*.swp
+com.amd.aparapi.jni/include
+com.amd.aparapi.jni/ipch
+com.amd.aparapi.jni/x64

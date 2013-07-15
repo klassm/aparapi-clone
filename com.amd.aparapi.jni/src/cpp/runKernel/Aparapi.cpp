@@ -621,7 +621,7 @@ void processLocalArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int
    cl_int status = CL_SUCCESS;
    // what if local buffer size has changed?  We need a check for resize here.
    if (jniContext->firstRun) {
-      status = arg->setLocalBufferArg(jenv, argIdx, argPos, config->isVerbose());
+      status = jniContext->setLocalBufferArg(jenv, argIdx, argPos, config->isVerbose(), arg);
       if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg() (local)");
 
       // Add the array length if needed
@@ -661,7 +661,7 @@ void processLocalBuffer(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, in
    cl_int status = CL_SUCCESS;
    // what if local buffer size has changed?  We need a check for resize here.
    if (jniContext->firstRun) {
-      status = arg->setLocalBufferArg(jenv, argIdx, argPos, config->isVerbose());
+      status = jniContext->setLocalBufferArg(jenv, argIdx, argPos, config->isVerbose(), arg);
       if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg() (local)");
 
       // Add the array length if needed
@@ -1226,7 +1226,7 @@ JNI_JAVA(jint, KernelRunnerJNI, setArgsJNI)
          // Step through the array of KernelArg's to capture the type data for the Kernel's data members.
          for (jint i = 0; i < jniContext->argc; i++){ 
             jobject argObj = jenv->GetObjectArrayElement(argArray, i);
-            KernelArg* arg = jniContext->args[i] = new KernelArg(jenv, jniContext, argObj);
+            KernelArg* arg = jniContext->args[i] = new KernelArg(jenv, argObj);
             if (config->isVerbose()){
                if (arg->isExplicit()){
                   fprintf(stderr, "%s is explicit!\n", arg->name);
