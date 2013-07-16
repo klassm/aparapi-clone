@@ -1,12 +1,12 @@
 #ifndef JNI_CONTEXT_H
 #define JNI_CONTEXT_H
 
-
 #include "Common.h"
 #include "KernelArg.h"
 #include "ProfileInfo.h"
 #include "com_amd_aparapi_internal_jni_KernelRunnerJNI.h"
 #include "Config.h"
+#include <list>
 
 class JNIContext {
 private: 
@@ -64,5 +64,7 @@ public:
    cl_int JNIContext::setLocalAparapiBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose, KernelArg *kernelArg);
    cl_int JNIContext::setLocalBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose, KernelArg *kernelArg);
 };
+
+
 
 #endif // JNI_CONTEXT_H

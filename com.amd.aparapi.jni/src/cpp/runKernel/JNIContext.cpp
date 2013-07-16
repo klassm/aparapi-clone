@@ -1,6 +1,7 @@
 #include "JNIContext.h"
 #include "OpenCLJNI.h"
 #include "List.h"
+#include "BufferManager.h"
 
 JNIContext::JNIContext(JNIEnv *jenv, jobject _kernelObject, jobject _openCLDeviceObject, jint _flags): 
       kernelObject(jenv->NewGlobalRef(_kernelObject)),
@@ -29,6 +30,11 @@ JNIContext::JNIContext(JNIEnv *jenv, jobject _kernelObject, jobject _openCLDevic
    if (status == CL_SUCCESS){
       valid = JNI_TRUE;
    }
+
+   BufferManager* bufferManager = BufferManager::getInstance();
+   
+   std::list<JNIContext*>::iterator it = bufferManager->jniContextList.begin();
+   bufferManager->jniContextList.insert(it, this);
 }
 
 void JNIContext::dispose(JNIEnv *jenv, Config* config) {
@@ -142,4 +148,3 @@ cl_int JNIContext::setLocalAparapiBufferArg(JNIEnv *jenv, int argIdx, int argPos
    }
    return(clSetKernelArg(this->kernel, argPos, (int)kernelArg->aparapiBuffer->lengthInBytes, NULL));
 }
-

@@ -99,6 +99,9 @@
     <ClInclude Include="src\cpp\runKernel\GPUElement.h">
       <Filter>Source Files\gpuElement</Filter>
     </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\BufferManager.h">
+      <Filter>Source Files\gpuElement</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\cpp\agent.cpp">
@@ -150,6 +153,9 @@
       <Filter>Source Files\gpuElement</Filter>
     </ClCompile>
     <ClCompile Include="src\cpp\runKernel\GPUElement.cpp">
+      <Filter>Source Files\gpuElement</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\BufferManger.cpp">
       <Filter>Source Files\gpuElement</Filter>
     </ClCompile>
   </ItemGroup>

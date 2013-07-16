@@ -8,6 +8,7 @@
 #include "AparapiBuffer.h"
 #include "com_amd_aparapi_internal_jni_KernelRunnerJNI.h"
 #include "Config.h"
+#include "BufferManager.h"
 #include <iostream>
 
 #ifdef _WIN32

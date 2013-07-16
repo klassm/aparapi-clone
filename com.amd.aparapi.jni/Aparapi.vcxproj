@@ -161,6 +161,7 @@
     <ClInclude Include="src\cpp\runKernel\Aparapi.h" />
     <ClInclude Include="src\cpp\runKernel\AparapiBuffer.h" />
     <ClInclude Include="src\cpp\runKernel\ArrayBuffer.h" />
+    <ClInclude Include="src\cpp\runKernel\BufferManager.h" />
     <ClInclude Include="src\cpp\runKernel\Config.h" />
     <ClInclude Include="src\cpp\runKernel\GPUElement.h" />
     <ClInclude Include="src\cpp\runKernel\JNIContext.h" />
@@ -181,6 +182,7 @@
     <ClCompile Include="src\cpp\runKernel\Aparapi.cpp" />
     <ClCompile Include="src\cpp\runKernel\AparapiBuffer.cpp" />
     <ClCompile Include="src\cpp\runKernel\ArrayBuffer.cpp" />
+    <ClCompile Include="src\cpp\runKernel\BufferManger.cpp" />
     <ClCompile Include="src\cpp\runKernel\Config.cpp" />
     <ClCompile Include="src\cpp\runKernel\GPUElement.cpp" />
     <ClCompile Include="src\cpp\runKernel\JNIContext.cpp" />

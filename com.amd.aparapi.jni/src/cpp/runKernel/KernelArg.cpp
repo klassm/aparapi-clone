@@ -1,5 +1,6 @@
 #include "KernelArg.h"
 #include "JNIContext.h"
+#include "BufferManager.h"
 #include <string>
 #include <iostream>
 
@@ -31,10 +32,12 @@ KernelArg::KernelArg(JNIEnv *jenv, jobject argObj):
       const char *nameChars = jenv->GetStringUTFChars(nameString, NULL);
       name = strdup(nameChars);
       jenv->ReleaseStringUTFChars(nameString, nameChars);
+
+      BufferManager* bufferManager = BufferManager::getInstance();
       if (isArray()){
-         arrayBuffer = new ArrayBuffer();
+         arrayBuffer = bufferManager->getArrayBufferFor(jenv, argObj);
       } else if(isAparapiBuffer()) {
-         aparapiBuffer = AparapiBuffer::flatten(jenv, argObj, type);
+         aparapiBuffer = bufferManager->getAparapiBufferFor(jenv, argObj, type);
       }
    }
 
