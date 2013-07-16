@@ -38,13 +38,14 @@
 
 #ifndef APARAPIBUFFER_H
 #define APARAPIBUFFER_H
+#include "GPUElement.h"
 #include "Common.h"
 #include "ProfileInfo.h"
 #include "com_amd_aparapi_internal_jni_KernelRunnerJNI.h"
 
 class KernelArg;
 
-class AparapiBuffer{
+class AparapiBuffer: public GPUElement {
 
 private:
 
@@ -70,17 +71,11 @@ private:
       return (type&com_amd_aparapi_internal_jni_KernelRunnerJNI_ARG_SHORT);
    }
 
-public:
-      jobject javaObject;       // The java array that this arg is mapped to 
+public: 
       cl_uint numDims;          // sizes of dimensions of the object (array lengths for ND arrays)
       cl_uint* dims;            // sizes of offsets of the object (first element offset in ND arrays)
       cl_uint* lens;            // sizes of dimensions of the object (array lengths for ND arrays)
-      jint lengthInBytes;       // bytes in the array or directBuf
-      cl_mem mem;               // the opencl buffer 
       void *data;               // a copy of the object itself (this is what we pass to OpenCL)
-      cl_uint memMask;          // the mask used for createBuffer
-      ProfileInfo read;
-      ProfileInfo write;
 
       AparapiBuffer();
       AparapiBuffer(void* _data, cl_uint* _dims, cl_uint _numDims, long _lengthInBytes, jobject _javaObject);

@@ -255,18 +255,18 @@ jint updateNonPrimitiveReferences(JNIEnv *jenv, jobject jobj, JNIContext* jniCon
             // Following used for all primitive arrays, object arrays and nio Buffers
             jarray newRef = (jarray)jenv->GetObjectField(arg->javaArg, KernelArg::javaArrayFieldID);
             if (config->isVerbose()){
-               fprintf(stderr, "testing for Resync javaArray %s: old=%p, new=%p\n", arg->name, arg->arrayBuffer->javaArray, newRef);         
+               fprintf(stderr, "testing for Resync javaArray %s: old=%p, new=%p\n", arg->name, arg->arrayBuffer->javaObject, newRef);         
             }
 
-            if (!jenv->IsSameObject(newRef, arg->arrayBuffer->javaArray)) {
+            if (!jenv->IsSameObject(newRef, arg->arrayBuffer->javaObject)) {
                if (config->isVerbose()){
-                  fprintf(stderr, "Resync javaArray for %s: %p  %p\n", arg->name, newRef, arg->arrayBuffer->javaArray);         
+                  fprintf(stderr, "Resync javaArray for %s: %p  %p\n", arg->name, newRef, arg->arrayBuffer->javaObject);         
                }
                // Free previous ref if any
-               if (arg->arrayBuffer->javaArray != NULL) {
-                  jenv->DeleteWeakGlobalRef((jweak) arg->arrayBuffer->javaArray);
+               if (arg->arrayBuffer->javaObject != NULL) {
+                  jenv->DeleteWeakGlobalRef((jweak) arg->arrayBuffer->javaObject);
                   if (config->isVerbose()){
-                     fprintf(stderr, "DeleteWeakGlobalRef for %s: %p\n", arg->name, arg->arrayBuffer->javaArray);         
+                     fprintf(stderr, "DeleteWeakGlobalRef for %s: %p\n", arg->name, arg->arrayBuffer->javaObject);         
                   }
                }
 
@@ -287,13 +287,13 @@ jint updateNonPrimitiveReferences(JNIEnv *jenv, jobject jobj, JNIContext* jniCon
                // Capture new array ref from the kernel arg object
 
                if (newRef != NULL) {
-                  arg->arrayBuffer->javaArray = (jarray)jenv->NewWeakGlobalRef((jarray)newRef);
+                  arg->arrayBuffer->javaObject = (jarray)jenv->NewWeakGlobalRef((jarray)newRef);
                   if (config->isVerbose()){
                      fprintf(stderr, "NewWeakGlobalRef for %s, set to %p\n", arg->name,
-                           arg->arrayBuffer->javaArray);         
+                           arg->arrayBuffer->javaObject);         
                   }
                } else {
-                  arg->arrayBuffer->javaArray = NULL;
+                  arg->arrayBuffer->javaObject = NULL;
                }
 
                // Save the lengthInBytes which was set on the java side
@@ -466,7 +466,7 @@ void processArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& arg
 
    if (config->isVerbose()) {
       fprintf(stderr, "runKernel: arrayOrBuf ref %p, oldAddr=%p, newAddr=%p, ref.mem=%p isCopy=%s\n",
-            arg->arrayBuffer->javaArray, 
+            arg->arrayBuffer->javaObject, 
             prevAddr,
             arg->arrayBuffer->addr,
             arg->arrayBuffer->mem,
@@ -1302,7 +1302,7 @@ KernelArg* getArgForBuffer(JNIEnv* jenv, JNIContext* jniContext, jobject buffer)
       for (jint i = 0; returnArg == NULL && i < jniContext->argc; i++){ 
          KernelArg *arg = jniContext->args[i];
          if (arg->isArray()) {
-            jboolean isSame = jenv->IsSameObject(buffer, arg->arrayBuffer->javaArray);
+            jboolean isSame = jenv->IsSameObject(buffer, arg->arrayBuffer->javaObject);
             if (isSame){
                if (config->isVerbose()){
                   fprintf(stderr, "matched arg '%s'\n", arg->name);

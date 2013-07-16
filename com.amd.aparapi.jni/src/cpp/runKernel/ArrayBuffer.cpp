@@ -39,26 +39,22 @@
 #include "ArrayBuffer.h"
 
 ArrayBuffer::ArrayBuffer():
-   javaArray((jobject) 0),
    length(0),
-   lengthInBytes(0),
-   mem((cl_mem) 0),
    addr(NULL),
-   memMask((cl_uint)0),
    isCopy(false),
    isPinned(false){
    }
 
 void ArrayBuffer::unpinAbort(JNIEnv *jenv){
-   jenv->ReleasePrimitiveArrayCritical((jarray)javaArray, addr,JNI_ABORT);
+   jenv->ReleasePrimitiveArrayCritical((jarray)this->javaObject, addr,JNI_ABORT);
    isPinned = JNI_FALSE;
 }
 void ArrayBuffer::unpinCommit(JNIEnv *jenv){
-   jenv->ReleasePrimitiveArrayCritical((jarray)javaArray, addr, 0);
+jenv->ReleasePrimitiveArrayCritical((jarray)this->javaObject, addr, 0);
    isPinned = JNI_FALSE;
 }
 void ArrayBuffer::pin(JNIEnv *jenv){
    void *ptr = addr;
-   addr = jenv->GetPrimitiveArrayCritical((jarray)javaArray,&isCopy);
+   addr = jenv->GetPrimitiveArrayCritical((jarray)this->javaObject,&isCopy);
    isPinned = JNI_TRUE;
 }

@@ -1,12 +1,16 @@
-#include "aparapi.h";
+#ifndef GPUELEMENT_H
+#define GPUELEMENT_H
+
+#include "Common.h"
+#include "ProfileInfo.h"
 
 class GPUElement {
-	public:
-		// The last address where we saw this java object
-		void *lastJavaObjectAddress;
-		
+	public:	
 		// The java object that is contained within this GPUElement
-		jobject javaObject;		
+		jobject javaObject;	
+      
+      // bytes in the array or directBuf
+      jint lengthInBytes;      
 
 		// OpenCL memory buffer
 		cl_mem mem;               
@@ -17,5 +21,9 @@ class GPUElement {
 		ProfileInfo read;
 		ProfileInfo write;
 
-		virtual void process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
+		GPUElement();
+
+		//void process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);,
+   private:
 };
+#endif

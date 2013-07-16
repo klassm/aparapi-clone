@@ -40,24 +40,18 @@
 #include "KernelArg.h"
 
 AparapiBuffer::AparapiBuffer():
-   javaObject((jobject) 0),
    numDims(0),
    dims(NULL),
-   lengthInBytes(0),
-   mem((cl_mem) 0),
-   data(NULL),
-   memMask((cl_uint)0) {
+   data(NULL) {
    }
 
 AparapiBuffer::AparapiBuffer(void* _data, cl_uint* _lens, cl_uint _numDims, long _lengthInBytes, jobject _javaObject) :
    data(_data),
    lens(_lens),
-   numDims(_numDims),
-   lengthInBytes(_lengthInBytes),
-   javaObject(_javaObject),
-   mem((cl_mem) 0),
-   memMask((cl_uint)0)
-{
+   numDims(_numDims) {
+   this->lengthInBytes = _lengthInBytes;
+   this->javaObject = _javaObject;
+
    dims = new cl_uint[_numDims];
    for(int i = 0; i < _numDims; i++) {
       dims[i] = 1;

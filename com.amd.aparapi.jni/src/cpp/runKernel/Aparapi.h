@@ -39,7 +39,6 @@
 #ifndef APARAPI_H
 #define APARAPI_H
 
-
 #include "Common.h"
 #include "com_amd_aparapi_internal_jni_KernelRunnerJNI.h"
 #include "CLException.h"

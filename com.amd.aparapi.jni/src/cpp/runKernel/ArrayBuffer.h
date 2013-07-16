@@ -38,22 +38,17 @@
 
 #ifndef ARRAYBUFFER_H
 #define ARRAYBUFFER_H
+#include "GPUElement.h"
 #include "Common.h"
 #include "ProfileInfo.h"
 
-class ArrayBuffer{
+class ArrayBuffer: public GPUElement {
    public:
-      jobject javaArray;        // The java array that this arg is mapped to 
-      cl_uint length;           // the number of elements for arrays (used only when ARRAYLENGTH bit is set for this arg)
-      jint lengthInBytes;       // bytes in the array or directBuf
-      cl_mem mem;               // the opencl buffer 
+      cl_uint length;           // the number of elements for arrays (used only when ARRAYLENGTH bit is set for this arg) 
       void *addr;               // the last address where we saw this java array object
-      cl_uint memMask;          // the mask used for createBuffer
       jboolean isCopy;
       jboolean isPinned;
       char memSpec[128];        // The string form of the mask we used for create buffer. for debugging
-      ProfileInfo read;
-      ProfileInfo write;
 
       ArrayBuffer();
       void unpinAbort(JNIEnv *jenv);

@@ -77,8 +77,8 @@ void JNIContext::dispose(JNIEnv *jenv, Config* config) {
                   CLException::checkCLError(status, "clReleaseMemObject()");
                   arg->arrayBuffer->mem = (cl_mem)0;
                }
-               if (arg->arrayBuffer->javaArray != NULL)  {
-                  jenv->DeleteWeakGlobalRef((jweak) arg->arrayBuffer->javaArray);
+               if (arg->arrayBuffer->javaObject != NULL)  {
+                  jenv->DeleteWeakGlobalRef((jweak) arg->arrayBuffer->javaObject);
                }
                delete arg->arrayBuffer;
                arg->arrayBuffer = NULL;
