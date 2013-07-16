@@ -4,6 +4,9 @@
 #include "Common.h"
 #include "ProfileInfo.h"
 
+class KernelArg;
+class JNIContext;
+
 class GPUElement {
 	public:	
 		// The java object that is contained within this GPUElement
@@ -23,7 +26,7 @@ class GPUElement {
 
 		GPUElement();
 
-		//void process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);,
+		virtual void process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
    private:
 };
 #endif

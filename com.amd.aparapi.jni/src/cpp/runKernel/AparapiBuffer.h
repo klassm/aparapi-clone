@@ -80,6 +80,9 @@ public:
       AparapiBuffer();
       AparapiBuffer(void* _data, cl_uint* _dims, cl_uint _numDims, long _lengthInBytes, jobject _javaObject);
 
+      void process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
+      void updateBuffer(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
+
       void deleteBuffer(KernelArg* arg);
 
       static AparapiBuffer* flatten(JNIEnv *env, jobject arg, int type);

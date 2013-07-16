@@ -51,9 +51,15 @@ class ArrayBuffer: public GPUElement {
       char memSpec[128];        // The string form of the mask we used for create buffer. for debugging
 
       ArrayBuffer();
+
+      void process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
+
       void unpinAbort(JNIEnv *jenv);
       void unpinCommit(JNIEnv *jenv);
       void pin(JNIEnv *jenv);
+   
+   private:
+      void updateArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
 };
 
 #endif // ARRAYBUFFER_H

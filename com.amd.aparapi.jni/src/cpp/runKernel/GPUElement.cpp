@@ -7,3 +7,5 @@ GPUElement::GPUElement():
    mem((cl_mem) 0)
    {
 	}
+
+void GPUElement::process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {}

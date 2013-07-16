@@ -38,6 +38,8 @@
 #define APARAPIBUFFER_SOURCE
 #include "AparapiBuffer.h"
 #include "KernelArg.h"
+#include "List.h"
+#include "JNIContext.h"
 
 AparapiBuffer::AparapiBuffer():
    numDims(0),
@@ -1547,5 +1549,91 @@ void AparapiBuffer::deleteBuffer(KernelArg* arg)
       delete[] (jfloat*)data;
    } else if(arg->isDouble()) {
       delete[] (jdouble*)data;
+   }
+}
+
+void AparapiBuffer::process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
+   
+   cl_int status = CL_SUCCESS;
+
+   if (config->isProfilingEnabled()){
+      arg->aparapiBuffer->read.valid = false;
+      arg->aparapiBuffer->write.valid = false;
+   }
+
+   if (config->isVerbose()) {
+      fprintf(stderr, "runKernel: arrayOrBuf addr=%p, ref.mem=%p\n",
+            arg->aparapiBuffer->data,
+            arg->aparapiBuffer->mem);
+      fprintf(stderr, "at memory addr %p, contents: ", arg->aparapiBuffer->data);
+      unsigned char *pb = (unsigned char *) arg->aparapiBuffer->data;
+      for (int k=0; k<8; k++) {
+         fprintf(stderr, "%02x ", pb[k]);
+      }
+      fprintf(stderr, "\n" );
+   }
+
+   if (config->isVerbose()){
+      if (arg->isExplicit() && arg->isExplicitWrite()){
+         fprintf(stderr, "explicit write of %s\n",  arg->name);
+      }
+   }
+
+   if (arg->aparapiBuffer->mem != 0) {
+      if (config->isTrackingOpenCLResources()) {
+         memList.remove((cl_mem)arg->aparapiBuffer->mem, __LINE__, __FILE__);
+      }
+      status = clReleaseMemObject((cl_mem)arg->aparapiBuffer->mem);
+      //fprintf(stdout, "dispose arg %d %0lx\n", i, arg->aparapiBuffer->mem);
+
+      //this needs to be reported, but we can still keep going
+      CLException::checkCLError(status, "clReleaseMemObject()");
+
+      arg->aparapiBuffer->mem = (cl_mem)0;
+   }
+
+   updateBuffer(jenv, jniContext, arg, argPos, argIdx);
+
+}
+
+void AparapiBuffer::updateBuffer(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
+
+   AparapiBuffer* buffer = arg->aparapiBuffer;
+   cl_int status = CL_SUCCESS;
+   cl_uint mask = CL_MEM_USE_HOST_PTR;
+   if (arg->isReadByKernel() && arg->isMutableByKernel()) mask |= CL_MEM_READ_WRITE;
+   else if (arg->isReadByKernel() && !arg->isMutableByKernel()) mask |= CL_MEM_READ_ONLY;
+   else if (arg->isMutableByKernel()) mask |= CL_MEM_WRITE_ONLY;
+   buffer->memMask = mask;
+
+   buffer->mem = clCreateBuffer(jniContext->context, buffer->memMask, 
+         buffer->lengthInBytes, buffer->data, &status);
+
+   if(status != CL_SUCCESS) throw CLException(status,"clCreateBuffer");
+
+   if (config->isTrackingOpenCLResources()){
+      memList.add(buffer->mem, __LINE__, __FILE__);
+   }
+
+   status = clSetKernelArg(jniContext->kernel, argPos, sizeof(cl_mem), (void *)&(buffer->mem));
+   if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (buffer)");
+
+   // Add the array length if needed
+   if (arg->usesArrayLength()) {
+
+      for(int i = 0; i < buffer->numDims; i++) {
+         argPos++;
+         status = clSetKernelArg(jniContext->kernel, argPos, sizeof(cl_uint), &(buffer->lens[i]));
+         if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (buffer length)");
+         if (config->isVerbose()){
+            fprintf(stderr, "runKernel arg %d %s, length = %d\n", argIdx, arg->name, buffer->lens[i]);
+         }
+         argPos++;
+         status = clSetKernelArg(jniContext->kernel, argPos, sizeof(cl_uint), &(buffer->dims[i]));
+         if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (buffer dimension)");
+         if (config->isVerbose()){
+            fprintf(stderr, "runKernel arg %d %s, dim = %d\n", argIdx, arg->name, buffer->dims[i]);
+         }
+      }
    }
 }
