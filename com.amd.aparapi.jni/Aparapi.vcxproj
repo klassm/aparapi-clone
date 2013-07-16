@@ -68,7 +68,7 @@
     <LinkIncremental>true</LinkIncremental>
     <TargetName>aparapi_x86</TargetName>
     <OutDir>.\dist\</OutDir>
-    <IncludePath>G:\dev\aparapi-clone\com.amd.aparapi.jni\include;G:\dev\aparapi-clone\com.amd.aparapi.jni\src\cpp\invoke;G:\dev\aparapi-clone\com.amd.aparapi.jni\src\cpp\runKernel;G:\dev\aparapi-clone\com.amd.aparapi.jni\src\cpp;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include;$(ProjectDir)src\cpp\runKernel;$(ProjectDir)src\cpp;$(ProjectDir)src\cpp\invoke;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>true</LinkIncremental>
@@ -101,12 +101,12 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>D:\Programme\Microsoft Visual Studio 10.0\VC\include;C:\Program Files\Java\jdk1.7.0_25\include;C:\Program Files\Java\jdk1.7.0_25\include\win32;include;C:\Program Files %28x86%29\AMD APP\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VISUAL_STUDIO_DIR)\VC\include;$(JAVA_HOME)\include;$(JAVA_HOME)\include\win32;include;$(AMDAPPSDKROOT)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>C:\Program Files (x86)\AMD APP\lib\x86_64;D:\Programme\Microsoft Visual Studio 10.0\VC\lib\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(AMDAPPSDKROOT)\lib\x86_64;$(VISUAL_STUDIO_DIR)\VC\lib\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>OpenCL.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>dist\aparapi_x86.dll</OutputFile>
     </Link>
