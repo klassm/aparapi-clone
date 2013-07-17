@@ -104,6 +104,8 @@ public class KernelRunner extends KernelRunnerJNI {
 
    private long executionTime = 0;
 
+   private OpenCLDevice lastGPUExecutionDevice = null;
+
    /**
     * <code>Kernel.dispose()</code> delegates to <code>KernelRunner.dispose()</code> which delegates to <code>disposeJNI()</code> to actually close JNI data structures.<br/>
     *
@@ -905,6 +907,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
    public synchronized KernelRunner execute(Kernel kernel, final Range _range, final int _passes) {
 
+
       long executeStartTime = System.currentTimeMillis();
 
       if (_range == null) {
@@ -933,11 +936,16 @@ public class KernelRunner extends KernelRunnerJNI {
                Entrypoint entryPoint = currentKernelMapping.entryPoint;
                if ((entryPoint != null) && !entryPoint.shouldFallback()) {
                   synchronized (Kernel.class) { // This seems to be needed because of a race condition uncovered with issue #68 http://code.google.com/p/aparapi/issues/detail?id=68
-                     if (device != null && !(device instanceof OpenCLDevice)) {
-                        throw new IllegalStateException("range's device is not suitable for OpenCL ");
-                     }
 
                      OpenCLDevice openCLDevice = (OpenCLDevice) device; // still might be null! 
+                     if (openCLDevice == null && lastGPUExecutionDevice != null) {
+                        openCLDevice = lastGPUExecutionDevice;
+                     } else if (openCLDevice != null && lastGPUExecutionDevice != null && ! openCLDevice.equals(lastGPUExecutionDevice)) {
+                        logger.severe("expected execution device: " + lastGPUExecutionDevice.toString());
+                        logger.severe("current execution device: " + openCLDevice.toString());
+                        throw new IllegalArgumentException("GPU device can only be set once! Please always " +
+                            "use the same device!");
+                     }
 
                      int jniFlags = 0;
                      if (openCLDevice == null) {
@@ -959,6 +967,8 @@ public class KernelRunner extends KernelRunnerJNI {
                            jniFlags |= JNI_FLAG_USE_GPU; // this flag might be redundant now. 
                         }
                      }
+
+                     lastGPUExecutionDevice = openCLDevice;
 
                      //  jniFlags |= (Config.enableProfiling ? JNI_FLAG_ENABLE_PROFILING : 0);
                      //  jniFlags |= (Config.enableProfilingCSV ? JNI_FLAG_ENABLE_PROFILING_CSV | JNI_FLAG_ENABLE_PROFILING : 0);

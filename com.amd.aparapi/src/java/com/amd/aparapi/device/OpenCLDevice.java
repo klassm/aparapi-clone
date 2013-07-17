@@ -467,4 +467,21 @@ public class OpenCLDevice extends Device{
             + maxWorkItemDimensions + "\n  maxWorkItemSizes=" + s + "\n  maxWorkWorkGroupSize=" + maxWorkGroupSize
             + "\n  globalMemSize=" + globalMemSize + "\n  localMemSize=" + localMemSize);
    }
+
+   @Override
+   public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      OpenCLDevice that = (OpenCLDevice) o;
+
+      if (deviceId != that.deviceId) return false;
+
+      return true;
+   }
+
+   @Override
+   public int hashCode() {
+      return (int) (deviceId ^ (deviceId >>> 32));
+   }
 }
