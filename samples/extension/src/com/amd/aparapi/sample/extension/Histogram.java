@@ -96,6 +96,7 @@ public class Histogram{
          }
       }
 
+      System.out.println(kernelRunner.getExecutionMode());
       kernelRunner.dispose();
    }
 }

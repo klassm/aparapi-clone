@@ -78,7 +78,7 @@ void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv) {
 
    // by now both copy arrays will contain only unreferenced addresses
    for (std::list<AparapiBuffer>::iterator bufferIt = aparapiBufferCopy.begin(); bufferIt != aparapiBufferCopy.end(); bufferIt++) {
-      for (std::list<AparapiBuffer>::iterator it = aparapiBufferList.begin(); bufferIt != aparapiBufferList.end(); it++) {
+      for (std::list<AparapiBuffer>::iterator it = aparapiBufferList.begin(); it != aparapiBufferList.end(); it++) {
          if (&*bufferIt == &* it) {
             aparapiBufferList.erase(it);
 			GPUElement* element = (GPUElement*) &*it;

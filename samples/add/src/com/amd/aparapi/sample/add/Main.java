@@ -72,6 +72,7 @@ public class Main{
          System.out.printf("%6.2f + %6.2f = %8.2f\n", a[i], b[i], sum[i]);
       }
 
+      System.out.println(kernelRunner.getExecutionMode().name());
       kernelRunner.dispose();
    }
 

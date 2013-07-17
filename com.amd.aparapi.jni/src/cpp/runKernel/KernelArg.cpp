@@ -191,6 +191,9 @@ void KernelArg::updateReference(JNIEnv *jenv) {
          this->syncJavaArrayLength(jenv);
          this->syncSizeInBytes(jenv);
       } // object has changed
+   } else if (this->isAparapiBuffer()) {
+      //int numDims = JNIHelper::getInstanceField<jint>(jenv, javaArg, "numDims", IntArg);
+      this->aparapiBuffer = BufferManager::getInstance()->getAparapiBufferFor(jenv, javaArg, type);
    }
 }
 
