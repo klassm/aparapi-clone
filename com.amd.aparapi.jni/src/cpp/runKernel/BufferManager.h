@@ -49,6 +49,9 @@ class BufferManager {
       std::list<ArrayBuffer> arrayBufferList;
 	   void cleanUp(GPUElement* gpuElement, JNIEnv *jenv);
 
+      bool createdNewArrayBuffer;
+      bool createdNewAparapiBuffer;
+
       AparapiBuffer* findAparapiBufferForReference(JNIEnv *jenv, jobject argObj);
       ArrayBuffer* findArrayBufferForReference(JNIEnv *jenv, jobject argObj);
 };

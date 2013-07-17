@@ -96,7 +96,7 @@ void dispose(JNIEnv* jenv) {
 
    BufferManager::getInstance()->cleanUpNonReferencedBuffers(jenv);
 
-      if (config->isTrackingOpenCLResources()){
+   if (config->isTrackingOpenCLResources()){
       fprintf(stderr, "after dispose{ \n");
       commandQueueList.report(stderr);
       memList.report(stderr); 
