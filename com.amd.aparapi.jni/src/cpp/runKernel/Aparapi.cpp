@@ -95,6 +95,16 @@ void dispose(JNIEnv* jenv) {
    }
 
    BufferManager::getInstance()->cleanUpNonReferencedBuffers(jenv);
+
+      if (config->isTrackingOpenCLResources()){
+      fprintf(stderr, "after dispose{ \n");
+      commandQueueList.report(stderr);
+      memList.report(stderr); 
+      readEventList.report(stderr); 
+      executeEventList.report(stderr); 
+      writeEventList.report(stderr); 
+      fprintf(stderr, "}\n");
+   }
 }
 
 void initialize(JNIEnv* jenv, jobject _openCLDeviceObject) {

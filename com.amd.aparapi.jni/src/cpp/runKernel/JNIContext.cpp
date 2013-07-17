@@ -43,22 +43,9 @@ void JNIContext::dispose(JNIEnv *jenv, Config* config) {
       for (int i=0; i< argc; i++){
          KernelArg *arg = args[i];
          if (!arg->isPrimitive()){
-            if (arg->arrayBuffer != NULL){
-               if (arg->arrayBuffer->mem != 0){
-                  if (config->isTrackingOpenCLResources()){
-                     memList.remove((cl_mem)arg->arrayBuffer->mem, __LINE__, __FILE__);
-                  }
-                  status = clReleaseMemObject((cl_mem)arg->arrayBuffer->mem);
-                  //fprintf(stdout, "dispose arg %d %0lx\n", i, arg->arrayBuffer->mem);
-                  CLException::checkCLError(status, "clReleaseMemObject()");
-                  arg->arrayBuffer->mem = (cl_mem)0;
-               }
-               if (arg->arrayBuffer->javaObject != NULL)  {
-                  jenv->DeleteWeakGlobalRef((jweak) arg->arrayBuffer->javaObject);
-               }
-               delete arg->arrayBuffer;
-               arg->arrayBuffer = NULL;
-            }
+            // those will be cleaned up by BufferManager!
+            arg->arrayBuffer = NULL;
+            arg->aparapiBuffer = NULL;
          }
          if (arg->name != NULL){
             free(arg->name); arg->name = NULL;
@@ -84,15 +71,6 @@ void JNIContext::dispose(JNIEnv *jenv, Config* config) {
          delete[] readEventArgs; readEventArgs=0;
          delete[] writeEventArgs; writeEventArgs=0;
       } 
-   }
-   if (config->isTrackingOpenCLResources()){
-      fprintf(stderr, "after dispose{ \n");
-      commandQueueList.report(stderr);
-      memList.report(stderr); 
-      readEventList.report(stderr); 
-      executeEventList.report(stderr); 
-      writeEventList.report(stderr); 
-      fprintf(stderr, "}\n");
    }
 }
 

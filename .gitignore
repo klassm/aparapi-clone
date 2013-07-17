@@ -19,3 +19,4 @@ com.amd.aparapi.jni/x64
 *.iml
 *.class
 *.log
+out
