@@ -44,8 +44,6 @@ import java.io.File;
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.internal.kernel.KernelRunner;
 
-import static com.amd.aparapi.GPUMethods.*;
-
 public class Convolution{
 
    final static class ImageConvolution extends Kernel{

@@ -1,7 +1,6 @@
 package com.amd.aparapi.test;
 
 import com.amd.aparapi.Kernel;
-import static com.amd.aparapi.GPUMethods.*;
 
 public class MathMax extends Kernel{
    public void run() {

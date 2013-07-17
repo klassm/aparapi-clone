@@ -41,8 +41,6 @@ import com.amd.aparapi.Kernel;
 import com.amd.aparapi.Range;
 import com.amd.aparapi.internal.kernel.KernelRunner;
 
-import static com.amd.aparapi.GPUMethods.*;
-
 public class Main{
 
    public static class BlackScholesKernel extends Kernel{
