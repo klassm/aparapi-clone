@@ -1552,7 +1552,7 @@ void AparapiBuffer::deleteBuffer(KernelArg* arg)
    }
 }
 
-void AparapiBuffer::process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
+void AparapiBuffer::process(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
    
    cl_int status = CL_SUCCESS;
 
@@ -1592,11 +1592,11 @@ void AparapiBuffer::process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg
       arg->aparapiBuffer->mem = (cl_mem)0;
    }
 
-   updateBuffer(jenv, jniContext, arg, argPos, argIdx);
+   updateBuffer(jenv, context, jniContext, arg, argPos, argIdx);
 
 }
 
-void AparapiBuffer::updateBuffer(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
+void AparapiBuffer::updateBuffer(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
 
    AparapiBuffer* buffer = arg->aparapiBuffer;
    cl_int status = CL_SUCCESS;
@@ -1606,7 +1606,7 @@ void AparapiBuffer::updateBuffer(JNIEnv* jenv, JNIContext* jniContext, KernelArg
    else if (arg->isMutableByKernel()) mask |= CL_MEM_WRITE_ONLY;
    buffer->memMask = mask;
 
-   buffer->mem = clCreateBuffer(jniContext->context, buffer->memMask, 
+   buffer->mem = clCreateBuffer(context, buffer->memMask, 
          buffer->lengthInBytes, buffer->data, &status);
 
    if(status != CL_SUCCESS) throw CLException(status,"clCreateBuffer");

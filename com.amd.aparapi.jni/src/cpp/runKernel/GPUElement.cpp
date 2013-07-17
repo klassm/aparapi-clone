@@ -8,4 +8,4 @@ GPUElement::GPUElement():
    {
 	}
 
-void GPUElement::process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {}
+void GPUElement::process(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {}

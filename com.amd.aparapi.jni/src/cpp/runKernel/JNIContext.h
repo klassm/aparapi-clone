@@ -14,12 +14,7 @@ private:
    jboolean valid;
 public:
    jobject kernelObject;
-   jobject openCLDeviceObject;
    jclass kernelClass;
-   cl_device_id deviceId;
-   cl_int deviceType;
-   cl_context context;
-   cl_command_queue commandQueue;
    cl_program program;
    cl_kernel kernel;
    jint argc;

@@ -91,5 +91,9 @@ void writeProfile(JNIEnv* jenv, JNIContext* jniContext);
 
 KernelArg* getArgForBuffer(JNIEnv* jenv, JNIContext* jniContext, jobject buffer);
 
+void initialize(JNIEnv* jenv);
+void initialize(JNIEnv* jenv, jobject openCLDeviceObject);
+void dispose(JNIEnv* jenv);
+
 
 #endif // APARAPI_H

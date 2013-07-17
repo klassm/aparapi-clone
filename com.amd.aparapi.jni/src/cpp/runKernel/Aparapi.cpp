@@ -49,8 +49,94 @@
 #include "CLHelper.h"
 #include "List.h"
 #include "BufferManager.h"
+#include "OpenCLJNI.h"
 #include <algorithm>
+#include <list>
 
+bool isInitialized = false;
+cl_device_id deviceId = NULL;
+cl_device_type deviceType = NULL;
+cl_context context = NULL;
+cl_command_queue commandQueue = NULL;
+
+void initialize(JNIEnv* jenv) {
+   if (isInitialized) return;
+
+   isInitialized = true;
+   if (config == NULL){
+      config = new Config(jenv);
+   }
+}
+
+void dispose(JNIEnv* jenv) {
+   cl_int status = CL_SUCCESS;
+   if (context != 0){
+      status = clReleaseContext(context);
+      //fprintf(stdout, "dispose context %0lx\n", context);
+      CLException::checkCLError(status, "clReleaseContext()");
+      context = (cl_context)0;
+   }
+
+   std::list<JNIContext*> list = BufferManager::getInstance()->jniContextList;
+   for (std::list<JNIContext*>::iterator it = list.begin(); it != list.end(); it++) {
+      (*it)->dispose(jenv, config);
+      delete (*it);
+   }
+   list.clear();
+
+   if (commandQueue != NULL){
+      if (config->isTrackingOpenCLResources()){
+         commandQueueList.remove((cl_command_queue)commandQueue, __LINE__, __FILE__);
+      }
+      status = clReleaseCommandQueue((cl_command_queue)commandQueue);
+      //fprintf(stdout, "dispose commandQueue %0lx\n", commandQueue);
+      CLException::checkCLError(status, "clReleaseCommandQueue()");
+      commandQueue = (cl_command_queue) NULL;
+   }
+
+   BufferManager::getInstance()->cleanUpNonReferencedBuffers(jenv);
+}
+
+void initialize(JNIEnv* jenv, jobject _openCLDeviceObject) {
+   initialize(jenv);
+   if (deviceId != NULL) return;
+    
+   cl_int status = CL_SUCCESS;
+
+   jobject openCLDeviceObject = jenv->NewGlobalRef(_openCLDeviceObject);
+
+   // init opencl
+
+   jobject platformInstance = OpenCLDevice::getPlatformInstance(jenv, openCLDeviceObject);
+   cl_platform_id platformId = OpenCLPlatform::getPlatformId(jenv, platformInstance);
+   deviceId = OpenCLDevice::getDeviceId(jenv, openCLDeviceObject);
+   clGetDeviceInfo(deviceId, CL_DEVICE_TYPE,  sizeof(deviceType), &deviceType, NULL);
+
+   cl_context_properties cps[3] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platformId, 0 };
+   cl_context_properties* cprops = (NULL == platformId) ? NULL : cps;
+   context = clCreateContextFromType( cprops, deviceType, NULL, NULL, &status); 
+
+   jenv->DeleteWeakGlobalRef((jweak) openCLDeviceObject);
+
+   CLException::checkCLError(status, "clCreateContextFromType()");
+   if (status != CL_SUCCESS){
+      throw CLException(status, "clCreateContextFromType()");
+   }
+
+   // init opencl command queue
+
+   cl_command_queue_properties queue_props = 0;
+   if (config->isProfilingEnabled()) {
+      queue_props |= CL_QUEUE_PROFILING_ENABLE;
+   }
+
+   commandQueue = clCreateCommandQueue(context, deviceId,
+      queue_props,
+      &status);
+   if(status != CL_SUCCESS) throw CLException(status,"clCreateCommandQueue()");
+
+   commandQueueList.add(commandQueue, __LINE__, __FILE__);
+}
 
 //compiler dependant code
 /**
@@ -88,16 +174,13 @@ jint getProcess() {
 
 JNI_JAVA(jint, KernelRunnerJNI, disposeJNI)
    (JNIEnv *jenv, jobject jobj, jlong jniContextHandle) {
-      if (config== NULL){
-         config = new Config(jenv);
-      }
+      initialize(jenv);
+
+      dispose(jenv);
+
       cl_int status = CL_SUCCESS;
-      JNIContext* jniContext = JNIContext::getJNIContext(jniContextHandle);
-      if (jniContext != NULL){
-         jniContext->dispose(jenv, config);
-         delete jniContext;
-         jniContext = NULL;
-      }
+      CLException::checkCLError(status, "dispose()");
+      
       return(status);
    }
 
@@ -260,7 +343,7 @@ void profileFirstRun(JNIContext* jniContext) {
    cl_event firstEvent;
    int status = CL_SUCCESS;
 
-   status = enqueueMarker(jniContext->commandQueue, &firstEvent);
+   status = enqueueMarker(commandQueue, &firstEvent);
    if (status != CL_SUCCESS) throw CLException(status, "clEnqueueMarker endOfTxfers");
 
    status = clWaitForEvents(1, &firstEvent);
@@ -291,9 +374,9 @@ void profileFirstRun(JNIContext* jniContext) {
  */
 void processObject(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
     if(arg->isArray()) {
-       arg->arrayBuffer->process(jenv, jniContext, arg, argPos, argIdx);
+       arg->arrayBuffer->process(jenv, context, jniContext, arg, argPos, argIdx);
     } else if(arg->isAparapiBuffer()) {
-       arg->aparapiBuffer->process(jenv, jniContext, arg, argPos, argIdx);
+       arg->aparapiBuffer->process(jenv, context, jniContext, arg, argPos, argIdx);
     }
 }
 
@@ -321,10 +404,10 @@ void updateWriteEvents(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int
    }
 
    if(arg->isArray()) {
-      status = clEnqueueWriteBuffer(jniContext->commandQueue, arg->arrayBuffer->mem, CL_FALSE, 0, 
+      status = clEnqueueWriteBuffer(commandQueue, arg->arrayBuffer->mem, CL_FALSE, 0, 
          arg->arrayBuffer->lengthInBytes, arg->arrayBuffer->addr, 0, NULL, &(jniContext->writeEvents[writeEventCount]));
    } else if(arg->isAparapiBuffer()) {
-      status = clEnqueueWriteBuffer(jniContext->commandQueue, arg->aparapiBuffer->mem, CL_FALSE, 0, 
+      status = clEnqueueWriteBuffer(commandQueue, arg->aparapiBuffer->mem, CL_FALSE, 0, 
          arg->aparapiBuffer->lengthInBytes, arg->aparapiBuffer->data, 0, NULL, &(jniContext->writeEvents[writeEventCount]));
    }
    if(status != CL_SUCCESS) throw CLException(status,"clEnqueueWriteBuffer");
@@ -535,7 +618,7 @@ void enqueueKernel(JNIContext* jniContext, Range& range, int passes, int argPos,
       // see: http://www.openwall.com/lists/john-dev/2012/04/10/4
       cl_uint max_group_size[3];
       status = clGetKernelWorkGroupInfo(jniContext->kernel,
-                                        (cl_device_id)jniContext->deviceId,
+                                        deviceId,
                                         CL_KERNEL_WORK_GROUP_SIZE,
                                         sizeof(max_group_size),
                                         &max_group_size, NULL);
@@ -587,7 +670,7 @@ void enqueueKernel(JNIContext* jniContext, Range& range, int passes, int argPos,
       }
 
       status = clEnqueueNDRangeKernel(
-            jniContext->commandQueue,
+            commandQueue,
             jniContext->kernel,
             range.dims,
             range.offsets,
@@ -660,11 +743,11 @@ int getReadEvents(JNIEnv* jenv, JNIContext* jniContext) {
          }
 
          if(arg->isArray()) {
-            status = clEnqueueReadBuffer(jniContext->commandQueue, arg->arrayBuffer->mem, 
+            status = clEnqueueReadBuffer(commandQueue, arg->arrayBuffer->mem, 
                 CL_FALSE, 0, arg->arrayBuffer->lengthInBytes, arg->arrayBuffer->addr, 1, 
                 jniContext->executeEvents, &(jniContext->readEvents[readEventCount]));
          } else if(arg->isAparapiBuffer()) {
-            status = clEnqueueReadBuffer(jniContext->commandQueue, arg->aparapiBuffer->mem, 
+            status = clEnqueueReadBuffer(commandQueue, arg->aparapiBuffer->mem, 
                 CL_TRUE, 0, arg->aparapiBuffer->lengthInBytes, arg->aparapiBuffer->data, 1, 
                 jniContext->executeEvents, &(jniContext->readEvents[readEventCount]));
             arg->aparapiBuffer->inflate(jenv, arg);
@@ -788,9 +871,7 @@ void checkEvents(JNIEnv* jenv, JNIContext* jniContext, int writeEventCount) {
 
 JNI_JAVA(jint, KernelRunnerJNI, runKernelJNI)
    (JNIEnv *jenv, jobject jobj, jlong jniContextHandle, jobject _range, jboolean needSync, jint passes) {
-      if (config == NULL){
-         config = new Config(jenv);
-      }
+      initialize(jenv);
 
       Range range(jenv, _range);
 
@@ -851,9 +932,8 @@ JNI_JAVA(jlong, KernelRunnerJNI, initJNI)
       if (openCLDeviceObject == NULL){
          fprintf(stderr, "no device object!\n");
       }
-      if (config == NULL){
-         config = new Config(jenv);
-      }
+      initialize(jenv, openCLDeviceObject);
+
       cl_int status = CL_SUCCESS;
       JNIContext* jniContext = new JNIContext(jenv, kernelObject, openCLDeviceObject, flags);
 
@@ -916,24 +996,13 @@ JNI_JAVA(jlong, KernelRunnerJNI, buildProgramJNI)
       try {
          cl_int status = CL_SUCCESS;
 
-         jniContext->program = CLHelper::compile(jenv, jniContext->context,  1, &jniContext->deviceId, source, NULL, &status);
+         jniContext->program = CLHelper::compile(jenv, context,  1, &deviceId, source, NULL, &status);
 
          if(status == CL_BUILD_PROGRAM_FAILURE) throw CLException(status, "");
 
          jniContext->kernel = clCreateKernel(jniContext->program, "run", &status);
          if(status != CL_SUCCESS) throw CLException(status,"clCreateKernel()");
 
-         cl_command_queue_properties queue_props = 0;
-         if (config->isProfilingEnabled()) {
-            queue_props |= CL_QUEUE_PROFILING_ENABLE;
-         }
-
-         jniContext->commandQueue = clCreateCommandQueue(jniContext->context, (cl_device_id)jniContext->deviceId,
-               queue_props,
-               &status);
-         if(status != CL_SUCCESS) throw CLException(status,"clCreateCommandQueue()");
-
-         commandQueueList.add(jniContext->commandQueue, __LINE__, __FILE__);
 
          if (config->isProfilingCSVEnabled()) {
             writeProfile(jenv, jniContext);
@@ -951,9 +1020,8 @@ JNI_JAVA(jlong, KernelRunnerJNI, buildProgramJNI)
 // this is called once when the arg list is first determined for this kernel
 JNI_JAVA(jint, KernelRunnerJNI, setArgsJNI)
    (JNIEnv *jenv, jobject jobj, jlong jniContextHandle, jobjectArray argArray, jint argc) {
-      if (config == NULL) {
-         config = new Config(jenv);
-      }
+      initialize(jenv);
+
       JNIContext* jniContext = JNIContext::getJNIContext(jniContextHandle);
       cl_int status = CL_SUCCESS;
       if (jniContext != NULL){      
@@ -1012,14 +1080,13 @@ JNI_JAVA(jint, KernelRunnerJNI, setArgsJNI)
 
 JNI_JAVA(jstring, KernelRunnerJNI, getExtensionsJNI)
    (JNIEnv *jenv, jobject jobj, jlong jniContextHandle) {
-      if (config == NULL){
-         config = new Config(jenv);
-      }
+      initialize(jenv);
+
       jstring jextensions = NULL;
       JNIContext* jniContext = JNIContext::getJNIContext(jniContextHandle);
       if (jniContext != NULL){
          cl_int status = CL_SUCCESS;
-         jextensions = CLHelper::getExtensions(jenv, jniContext->deviceId, &status);
+         jextensions = CLHelper::getExtensions(jenv, deviceId, &status);
       }
       return jextensions;
    }
@@ -1077,9 +1144,8 @@ KernelArg* getArgForBuffer(JNIEnv* jenv, JNIContext* jniContext, jobject buffer)
 // Called as a result of Kernel.get(someArray)
 JNI_JAVA(jint, KernelRunnerJNI, getJNI)
    (JNIEnv *jenv, jobject jobj, jlong jniContextHandle, jobject buffer) {
-      if (config == NULL){
-         config = new Config(jenv);
-      }
+      initialize(jenv);
+
       cl_int status = CL_SUCCESS;
       JNIContext* jniContext = JNIContext::getJNIContext(jniContextHandle);
       if (jniContext != NULL){
@@ -1092,7 +1158,7 @@ JNI_JAVA(jint, KernelRunnerJNI, getJNI)
                arg->pin(jenv);
 
                try {
-                  status = clEnqueueReadBuffer(jniContext->commandQueue, arg->arrayBuffer->mem, 
+                  status = clEnqueueReadBuffer(commandQueue, arg->arrayBuffer->mem, 
                                                CL_FALSE, 0, 
                                                arg->arrayBuffer->lengthInBytes,
                                                arg->arrayBuffer->addr , 0, NULL, 
@@ -1128,7 +1194,7 @@ JNI_JAVA(jint, KernelRunnerJNI, getJNI)
             } else if(arg->isAparapiBuffer()) {
 
                try {
-                  status = clEnqueueReadBuffer(jniContext->commandQueue, arg->aparapiBuffer->mem, 
+                  status = clEnqueueReadBuffer(commandQueue, arg->aparapiBuffer->mem, 
                                                CL_FALSE, 0, 
                                                arg->aparapiBuffer->lengthInBytes,
                                                arg->aparapiBuffer->data, 0, NULL, 
@@ -1171,9 +1237,8 @@ JNI_JAVA(jint, KernelRunnerJNI, getJNI)
 
 JNI_JAVA(jobject, KernelRunnerJNI, getProfileInfoJNI)
    (JNIEnv *jenv, jobject jobj, jlong jniContextHandle) {
-      if (config == NULL){
-         config = new Config(jenv);
-      }
+      initialize(jenv);
+
       cl_int status = CL_SUCCESS;
       JNIContext* jniContext = JNIContext::getJNIContext(jniContextHandle);
       jobject returnList = NULL;

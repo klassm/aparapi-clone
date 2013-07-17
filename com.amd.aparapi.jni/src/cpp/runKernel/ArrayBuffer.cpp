@@ -62,7 +62,7 @@ void ArrayBuffer::pin(JNIEnv *jenv){
    isPinned = JNI_TRUE;
 }
 
-void ArrayBuffer::process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
+void ArrayBuffer::process(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
    
    cl_int status = CL_SUCCESS;
 
@@ -118,7 +118,7 @@ void ArrayBuffer::process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, 
          this->mem = (cl_mem)0;
       }
 
-      updateArray(jenv, jniContext, arg, argPos, argIdx);
+      updateArray(jenv, context, jniContext, arg, argPos, argIdx);
 
    } else {
       // Keep the arg position in sync if no updates were required
@@ -128,7 +128,7 @@ void ArrayBuffer::process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, 
    }
 }
 
-void ArrayBuffer::updateArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
+void ArrayBuffer::updateArray(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
 
    cl_int status = CL_SUCCESS;
    // if either this is the first run or user changed input array
@@ -149,7 +149,7 @@ void ArrayBuffer::updateArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* a
             argIdx, this->memSpec, (unsigned long) this->lengthInBytes, this->addr);
    }
 
-   this->mem = clCreateBuffer(jniContext->context, this->memMask, 
+   this->mem = clCreateBuffer(context, this->memMask, 
          this->lengthInBytes, this->addr, &status);
 
    if(status != CL_SUCCESS) throw CLException(status,"clCreateBuffer");

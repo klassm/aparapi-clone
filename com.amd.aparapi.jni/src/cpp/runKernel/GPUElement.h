@@ -26,7 +26,7 @@ class GPUElement {
 
 		GPUElement();
 
-		virtual void process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
+		virtual void process(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
    private:
 };
 #endif

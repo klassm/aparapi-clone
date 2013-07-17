@@ -6,30 +6,14 @@
 JNIContext::JNIContext(JNIEnv *jenv, jobject _kernelObject, jobject _openCLDeviceObject, jint _flags): 
       kernelObject(jenv->NewGlobalRef(_kernelObject)),
       kernelClass((jclass)jenv->NewGlobalRef(jenv->GetObjectClass(_kernelObject))), 
-      openCLDeviceObject(jenv->NewGlobalRef(_openCLDeviceObject)),
+      //openCLDeviceObject(jenv->NewGlobalRef(_openCLDeviceObject)),
       flags(_flags),
       profileBaseTime(0),
       passes(0),
       exec(NULL),
-      deviceType(((flags&com_amd_aparapi_internal_jni_KernelRunnerJNI_JNI_FLAG_USE_GPU)==com_amd_aparapi_internal_jni_KernelRunnerJNI_JNI_FLAG_USE_GPU)?CL_DEVICE_TYPE_GPU:CL_DEVICE_TYPE_CPU),
+      //deviceType(((flags&com_amd_aparapi_internal_jni_KernelRunnerJNI_JNI_FLAG_USE_GPU)==com_amd_aparapi_internal_jni_KernelRunnerJNI_JNI_FLAG_USE_GPU)?CL_DEVICE_TYPE_GPU:CL_DEVICE_TYPE_CPU),
       profileFile(NULL), 
-      valid(JNI_FALSE){
-   cl_int status = CL_SUCCESS;
-   jobject platformInstance = OpenCLDevice::getPlatformInstance(jenv, openCLDeviceObject);
-   cl_platform_id platformId = OpenCLPlatform::getPlatformId(jenv, platformInstance);
-   deviceId = OpenCLDevice::getDeviceId(jenv, openCLDeviceObject);
-   cl_device_type returnedDeviceType;
-   clGetDeviceInfo(deviceId, CL_DEVICE_TYPE,  sizeof(returnedDeviceType), &returnedDeviceType, NULL);
-   //fprintf(stderr, "device[%d] CL_DEVICE_TYPE = %x\n", deviceId, returnedDeviceType);
-
-
-   cl_context_properties cps[3] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platformId, 0 };
-   cl_context_properties* cprops = (NULL == platformId) ? NULL : cps;
-   context = clCreateContextFromType( cprops, returnedDeviceType, NULL, NULL, &status); 
-   CLException::checkCLError(status, "clCreateContextFromType()");
-   if (status == CL_SUCCESS){
-      valid = JNI_TRUE;
-   }
+      valid(JNI_TRUE){
 
    BufferManager* bufferManager = BufferManager::getInstance();
    
@@ -42,21 +26,7 @@ void JNIContext::dispose(JNIEnv *jenv, Config* config) {
    cl_int status = CL_SUCCESS;
    jenv->DeleteGlobalRef(kernelObject);
    jenv->DeleteGlobalRef(kernelClass);
-   if (context != 0){
-      status = clReleaseContext(context);
-      //fprintf(stdout, "dispose context %0lx\n", context);
-      CLException::checkCLError(status, "clReleaseContext()");
-      context = (cl_context)0;
-   }
-   if (commandQueue != 0){
-      if (config->isTrackingOpenCLResources()){
-         commandQueueList.remove((cl_command_queue)commandQueue, __LINE__, __FILE__);
-      }
-      status = clReleaseCommandQueue((cl_command_queue)commandQueue);
-      //fprintf(stdout, "dispose commandQueue %0lx\n", commandQueue);
-      CLException::checkCLError(status, "clReleaseCommandQueue()");
-      commandQueue = (cl_command_queue)0;
-   }
+
    if (program != 0){
       status = clReleaseProgram((cl_program)program);
       //fprintf(stdout, "dispose program %0lx\n", program);
