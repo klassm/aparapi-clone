@@ -12,13 +12,14 @@ class BufferManager {
 
       ArrayBuffer* getArrayBufferFor(JNIEnv *jenv, jobject argObj);
       AparapiBuffer* getAparapiBufferFor(JNIEnv *jenv, jobject argObj, jint type);
-      void cleanUpNonReferencedBuffers();
+      void cleanUpNonReferencedBuffers(JNIEnv *jenv);
 
    private:
       BufferManager() {}
       ~BufferManager() {}
       std::list<AparapiBuffer> aparapiBufferList;
       std::list<ArrayBuffer> arrayBufferList;
+	  void cleanUp(GPUElement* gpuElement, JNIEnv *jenv);
 
       AparapiBuffer* findAparapiBufferForReference(JNIEnv *jenv, jobject argObj);
       ArrayBuffer* findArrayBufferForReference(JNIEnv *jenv, jobject argObj);

@@ -40,11 +40,12 @@
 #include "JNIContext.h"
 #include "List.h"
 
-ArrayBuffer::ArrayBuffer():
+ArrayBuffer::ArrayBuffer(JNIEnv* jenv, jobject jobject):
    length(0),
    addr(NULL),
    isCopy(false),
    isPinned(false){
+      this->javaObject = jobject;
    }
 
 void ArrayBuffer::unpinAbort(JNIEnv *jenv){
@@ -79,13 +80,13 @@ void ArrayBuffer::process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, 
 
    if (config->isVerbose()) {
       fprintf(stderr, "runKernel: arrayOrBuf ref %p, oldAddr=%p, newAddr=%p, ref.mem=%p isCopy=%s\n",
-            arg->arrayBuffer->javaObject, 
+            this->javaObject, 
             prevAddr,
-            arg->arrayBuffer->addr,
-            arg->arrayBuffer->mem,
-            arg->arrayBuffer->isCopy ? "true" : "false");
-      fprintf(stderr, "at memory addr %p, contents: ", arg->arrayBuffer->addr);
-      unsigned char *pb = (unsigned char *) arg->arrayBuffer->addr;
+            this->addr,
+            this->mem,
+            this->isCopy ? "true" : "false");
+      fprintf(stderr, "at memory addr %p, contents: ", this->addr);
+      unsigned char *pb = (unsigned char *) this->addr;
       for (int k=0; k<8; k++) {
          fprintf(stderr, "%02x ", pb[k]);
       }
@@ -94,7 +95,7 @@ void ArrayBuffer::process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, 
 
    // record whether object moved 
    // if we see that isCopy was returned by getPrimitiveArrayCritical, treat that as a move
-   bool objectMoved = (arg->arrayBuffer->addr != prevAddr) || arg->arrayBuffer->isCopy;
+   bool objectMoved = (this->addr != prevAddr) || this->isCopy;
 
    if (config->isVerbose()){
       if (arg->isExplicit() && arg->isExplicitWrite()){
@@ -103,18 +104,18 @@ void ArrayBuffer::process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, 
    }
 
    if (jniContext->firstRun || (arg->arrayBuffer->mem == 0) || objectMoved ){
-      if (arg->arrayBuffer->mem != 0 && objectMoved) {
+      if (this->mem != 0 && objectMoved) {
          // we need to release the old buffer 
          if (config->isTrackingOpenCLResources()) {
             memList.remove((cl_mem)arg->arrayBuffer->mem, __LINE__, __FILE__);
          }
-         status = clReleaseMemObject((cl_mem)arg->arrayBuffer->mem);
+         status = clReleaseMemObject((cl_mem)this->mem);
          //fprintf(stdout, "dispose arg %d %0lx\n", i, arg->arrayBuffer->mem);
 
          //this needs to be reported, but we can still keep going
          CLException::checkCLError(status, "clReleaseMemObject()");
 
-         arg->arrayBuffer->mem = (cl_mem)0;
+         this->mem = (cl_mem)0;
       }
 
       updateArray(jenv, jniContext, arg, argPos, argIdx);
@@ -140,24 +141,24 @@ void ArrayBuffer::updateArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* a
 
    if (config->isVerbose()) {
       strcpy(arg->arrayBuffer->memSpec,"CL_MEM_USE_HOST_PTR");
-      if (mask & CL_MEM_READ_WRITE) strcat(arg->arrayBuffer->memSpec,"|CL_MEM_READ_WRITE");
-      if (mask & CL_MEM_READ_ONLY) strcat(arg->arrayBuffer->memSpec,"|CL_MEM_READ_ONLY");
-      if (mask & CL_MEM_WRITE_ONLY) strcat(arg->arrayBuffer->memSpec,"|CL_MEM_WRITE_ONLY");
+      if (mask & CL_MEM_READ_WRITE) strcat(this->memSpec,"|CL_MEM_READ_WRITE");
+      if (mask & CL_MEM_READ_ONLY) strcat(this->memSpec,"|CL_MEM_READ_ONLY");
+      if (mask & CL_MEM_WRITE_ONLY) strcat(this->memSpec,"|CL_MEM_WRITE_ONLY");
 
       fprintf(stderr, "%s %d clCreateBuffer(context, %s, size=%08lx bytes, address=%p, &status)\n", arg->name, 
-            argIdx, arg->arrayBuffer->memSpec, (unsigned long)arg->arrayBuffer->lengthInBytes, arg->arrayBuffer->addr);
+            argIdx, this->memSpec, (unsigned long) this->lengthInBytes, this->addr);
    }
 
-   arg->arrayBuffer->mem = clCreateBuffer(jniContext->context, arg->arrayBuffer->memMask, 
-         arg->arrayBuffer->lengthInBytes, arg->arrayBuffer->addr, &status);
+   this->mem = clCreateBuffer(jniContext->context, this->memMask, 
+         this->lengthInBytes, this->addr, &status);
 
    if(status != CL_SUCCESS) throw CLException(status,"clCreateBuffer");
 
    if (config->isTrackingOpenCLResources()){
-      memList.add(arg->arrayBuffer->mem, __LINE__, __FILE__);
+      memList.add(this->mem, __LINE__, __FILE__);
    }
 
-   status = clSetKernelArg(jniContext->kernel, argPos, sizeof(cl_mem), (void *)&(arg->arrayBuffer->mem));
+   status = clSetKernelArg(jniContext->kernel, argPos, sizeof(cl_mem), (void *)&(this->mem));
    if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (array)");
 
    // Add the array length if needed
@@ -165,11 +166,11 @@ void ArrayBuffer::updateArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* a
       argPos++;
       arg->syncJavaArrayLength(jenv);
 
-      status = clSetKernelArg(jniContext->kernel, argPos, sizeof(jint), &(arg->arrayBuffer->length));
+      status = clSetKernelArg(jniContext->kernel, argPos, sizeof(jint), &(this->length));
       if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (array length)");
 
       if (config->isVerbose()){
-         fprintf(stderr, "runKernel arg %d %s, length = %d\n", argIdx, arg->name, arg->arrayBuffer->length);
+         fprintf(stderr, "runKernel arg %d %s, length = %d\n", argIdx, arg->name, this->length);
       }
    }
 }

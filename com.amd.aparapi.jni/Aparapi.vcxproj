@@ -66,7 +66,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <TargetName>aparapi_x86</TargetName>
+    <TargetName>aparapi_x86_64</TargetName>
     <OutDir>.\dist\</OutDir>
     <IncludePath>$(ProjectDir)include;$(ProjectDir)src\cpp\runKernel;$(ProjectDir)src\cpp;$(ProjectDir)src\cpp\invoke;$(IncludePath)</IncludePath>
   </PropertyGroup>
@@ -108,7 +108,7 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(AMDAPPSDKROOT)\lib\x86_64;$(VISUAL_STUDIO_DIR)\VC\lib\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>OpenCL.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>dist\aparapi_x86.dll</OutputFile>
+      <OutputFile>dist\aparapi_x86_64.dll</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -182,7 +182,7 @@
     <ClCompile Include="src\cpp\runKernel\Aparapi.cpp" />
     <ClCompile Include="src\cpp\runKernel\AparapiBuffer.cpp" />
     <ClCompile Include="src\cpp\runKernel\ArrayBuffer.cpp" />
-    <ClCompile Include="src\cpp\runKernel\BufferManger.cpp" />
+    <ClCompile Include="src\cpp\runKernel\BufferManager.cpp" />
     <ClCompile Include="src\cpp\runKernel\Config.cpp" />
     <ClCompile Include="src\cpp\runKernel\GPUElement.cpp" />
     <ClCompile Include="src\cpp\runKernel\JNIContext.cpp" />

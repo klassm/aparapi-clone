@@ -48,6 +48,7 @@
 #include "AparapiBuffer.h"
 #include "CLHelper.h"
 #include "List.h"
+#include "BufferManager.h"
 #include <algorithm>
 
 
@@ -239,74 +240,13 @@ jint updateNonPrimitiveReferences(JNIEnv *jenv, jobject jobj, JNIContext* jniCon
    cl_int status = CL_SUCCESS;
    if (jniContext != NULL){
       for (jint i = 0; i < jniContext->argc; i++){ 
+         
          KernelArg *arg = jniContext->args[i];
-
-         // make sure that the JNI arg reflects the latest type info from the instance.
-         // For example if the buffer is tagged as explicit and needs to be pushed
-         arg->syncType(jenv);
-
-         if (config->isVerbose()){
-            fprintf(stderr, "got type for %s: %08x\n", arg->name, arg->type);
-         }
-
-         //this won't be a problem with the aparapi buffers because
-         //we need to copy them every time anyway
-         if (!arg->isPrimitive() && !arg->isAparapiBuffer()) {
-            // Following used for all primitive arrays, object arrays and nio Buffers
-            jarray newRef = (jarray)jenv->GetObjectField(arg->javaArg, KernelArg::javaArrayFieldID);
-            if (config->isVerbose()){
-               fprintf(stderr, "testing for Resync javaArray %s: old=%p, new=%p\n", arg->name, arg->arrayBuffer->javaObject, newRef);         
-            }
-
-            if (!jenv->IsSameObject(newRef, arg->arrayBuffer->javaObject)) {
-               if (config->isVerbose()){
-                  fprintf(stderr, "Resync javaArray for %s: %p  %p\n", arg->name, newRef, arg->arrayBuffer->javaObject);         
-               }
-               // Free previous ref if any
-               if (arg->arrayBuffer->javaObject != NULL) {
-                  jenv->DeleteWeakGlobalRef((jweak) arg->arrayBuffer->javaObject);
-                  if (config->isVerbose()){
-                     fprintf(stderr, "DeleteWeakGlobalRef for %s: %p\n", arg->name, arg->arrayBuffer->javaObject);         
-                  }
-               }
-
-               // need to free opencl buffers, run will reallocate later
-               if (arg->arrayBuffer->mem != 0) {
-                  //fprintf(stderr, "-->releaseMemObject[%d]\n", i);
-                  if (config->isTrackingOpenCLResources()){
-                     memList.remove(arg->arrayBuffer->mem,__LINE__, __FILE__);
-                  }
-                  status = clReleaseMemObject((cl_mem)arg->arrayBuffer->mem);
-                  //fprintf(stderr, "<--releaseMemObject[%d]\n", i);
-                  if(status != CL_SUCCESS) throw CLException(status, "clReleaseMemObject()");
-                  arg->arrayBuffer->mem = (cl_mem)0;
-               }
-
-               arg->arrayBuffer->addr = NULL;
-
-               // Capture new array ref from the kernel arg object
-
-               if (newRef != NULL) {
-                  arg->arrayBuffer->javaObject = (jarray)jenv->NewWeakGlobalRef((jarray)newRef);
-                  if (config->isVerbose()){
-                     fprintf(stderr, "NewWeakGlobalRef for %s, set to %p\n", arg->name,
-                           arg->arrayBuffer->javaObject);         
-                  }
-               } else {
-                  arg->arrayBuffer->javaObject = NULL;
-               }
-
-               // Save the lengthInBytes which was set on the java side
-               arg->syncSizeInBytes(jenv);
-
-               if (config->isVerbose()){
-                  fprintf(stderr, "updateNonPrimitiveReferences, args[%d].lengthInBytes=%d\n", i, arg->arrayBuffer->lengthInBytes);
-               }
-            } // object has changed
-         }
+         arg->updateReference(jenv);
       } // for each arg
    } // if jniContext != NULL
    return(status);
+
 }
 
 /**
@@ -885,6 +825,9 @@ JNI_JAVA(jint, KernelRunnerJNI, runKernelJNI)
       try {
          int writeEventCount = 0;
          processArgs(jenv, jniContext, argPos, writeEventCount);
+
+         BufferManager::getInstance()->cleanUpNonReferencedBuffers(jenv);
+
          enqueueKernel(jniContext, range, passes, argPos, writeEventCount);
          int readEventCount = getReadEvents(jenv, jniContext);
          waitForReadEvents(jniContext, readEventCount, passes);
@@ -896,9 +839,6 @@ JNI_JAVA(jint, KernelRunnerJNI, runKernelJNI)
          return cle.status();
       }
 
-
-
-
       //fprintf(stderr, "About to return %d from exec\n", status);
       return(status);
    }
@@ -907,6 +847,7 @@ JNI_JAVA(jint, KernelRunnerJNI, runKernelJNI)
 // we return the JNIContext from here 
 JNI_JAVA(jlong, KernelRunnerJNI, initJNI)
    (JNIEnv *jenv, jobject jobj, jobject kernelObject, jobject openCLDeviceObject, jint flags) {
+
       if (openCLDeviceObject == NULL){
          fprintf(stderr, "no device object!\n");
       }
@@ -1023,7 +964,7 @@ JNI_JAVA(jint, KernelRunnerJNI, setArgsJNI)
          // Step through the array of KernelArg's to capture the type data for the Kernel's data members.
          for (jint i = 0; i < jniContext->argc; i++){ 
             jobject argObj = jenv->GetObjectArrayElement(argArray, i);
-            KernelArg* arg = jniContext->args[i] = new KernelArg(jenv, argObj);
+            KernelArg* arg = jniContext->args[i] = new KernelArg(jenv, argObj, jniContext);
             if (config->isVerbose()){
                if (arg->isExplicit()){
                   fprintf(stderr, "%s is explicit!\n", arg->name);

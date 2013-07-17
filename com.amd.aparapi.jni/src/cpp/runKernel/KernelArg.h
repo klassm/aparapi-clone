@@ -74,10 +74,12 @@ class KernelArg{
       AparapiBuffer *aparapiBuffer;
 
       // Uses JNIContext so cant inline here see below
-      KernelArg(JNIEnv *jenv, jobject argObj);
+      KernelArg(JNIEnv *jenv, jobject argObj, JNIContext *jniContext);
 
       ~KernelArg(){
       }
+
+      void updateReference(JNIEnv *jenv);
 
       void unpinAbort(JNIEnv *jenv){
          arrayBuffer->unpinAbort(jenv);

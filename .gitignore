@@ -18,3 +18,4 @@ com.amd.aparapi.jni/x64
 */.idea
 *.iml
 *.class
+*.log

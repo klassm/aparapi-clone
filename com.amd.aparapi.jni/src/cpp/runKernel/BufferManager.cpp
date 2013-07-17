@@ -1,10 +1,11 @@
 #include "BufferManager.h"
 #include "JNIContext.h"
+#include "List.h"
 
 ArrayBuffer* BufferManager::getArrayBufferFor(JNIEnv *jenv, jobject argObj) {
    ArrayBuffer* result = this->findArrayBufferForReference(jenv, argObj);
    if (result == NULL) {
-      result = new ArrayBuffer();
+      result = new ArrayBuffer(jenv, argObj);
       std::list<ArrayBuffer>::iterator it = arrayBufferList.begin();
       arrayBufferList.insert(it, *result);
    }
@@ -24,7 +25,7 @@ AparapiBuffer* BufferManager::getAparapiBufferFor(JNIEnv *jenv, jobject argObj, 
 AparapiBuffer* BufferManager::findAparapiBufferForReference(JNIEnv *jenv, jobject argObj) {
    for (std::list<AparapiBuffer>::iterator it = aparapiBufferList.begin(); it != aparapiBufferList.end(); it++) {
       jobject object = it->javaObject;
-      if (!jenv->IsSameObject(argObj, object)) {
+      if (jenv->IsSameObject(argObj, object)) {
          return &*it;
       }
    }
@@ -34,7 +35,7 @@ AparapiBuffer* BufferManager::findAparapiBufferForReference(JNIEnv *jenv, jobjec
 ArrayBuffer* BufferManager::findArrayBufferForReference(JNIEnv *jenv, jobject argObj) {
    for (std::list<ArrayBuffer>::iterator it = arrayBufferList.begin(); it != arrayBufferList.end(); it++) {
       jobject object = it->javaObject;
-      if (!jenv->IsSameObject(argObj, object)) {
+      if (jenv->IsSameObject(argObj, object)) {
          return &*it;
       }
    }
@@ -46,7 +47,7 @@ BufferManager* BufferManager::getInstance() {
    return &theInstance;
 }
 
-void BufferManager::cleanUpNonReferencedBuffers() {
+void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv) {
    std::list<AparapiBuffer> aparapiBufferCopy(aparapiBufferList.begin(), aparapiBufferList.end());
    std::list<ArrayBuffer> arrayBufferCopy(arrayBufferList.begin(), arrayBufferList.end());
 
@@ -80,19 +81,45 @@ void BufferManager::cleanUpNonReferencedBuffers() {
       for (std::list<AparapiBuffer>::iterator it = aparapiBufferList.begin(); bufferIt != aparapiBufferList.end(); it++) {
          if (&*bufferIt == &* it) {
             aparapiBufferList.erase(it);
+			GPUElement* element = (GPUElement*) &*it;
+			cleanUp(element, jenv);
             break;
          }
       }
    }
 
    for (std::list<ArrayBuffer>::iterator bufferIt = arrayBufferCopy.begin(); bufferIt != arrayBufferCopy.end(); bufferIt++) {
-      for (std::list<ArrayBuffer>::iterator it = arrayBufferList.begin(); bufferIt != arrayBufferList.end(); it++) {
+      for (std::list<ArrayBuffer>::iterator it = arrayBufferList.begin(); it != arrayBufferList.end(); it++) {
          if (&*bufferIt == &* it) {
             arrayBufferList.erase(it);
+			GPUElement* element = (GPUElement*) &*it;
+			cleanUp(element, jenv);
             break;
          }
       }
    }
+}
+
+void BufferManager::cleanUp(GPUElement* gpuElement, JNIEnv *jenv) {
+	cl_int status = CL_SUCCESS;
+
+	if (gpuElement->javaObject != NULL) {
+		jenv->DeleteWeakGlobalRef((jweak) gpuElement->javaObject);
+		if (config->isVerbose()){
+			fprintf(stderr, "DeleteWeakGlobalRef for %p\n", gpuElement->javaObject);         
+		}
+	}
+
+	if (gpuElement->mem != 0) {
+		if (config->isTrackingOpenCLResources()){
+			memList.remove(gpuElement->mem,__LINE__, __FILE__);
+		}
+		status = clReleaseMemObject((cl_mem)gpuElement->mem);
+
+		if(status != CL_SUCCESS) throw CLException(status, "clReleaseMemObject()");
+		gpuElement->mem = (cl_mem) 0;
+	}
+	delete(gpuElement);
 }
 
 

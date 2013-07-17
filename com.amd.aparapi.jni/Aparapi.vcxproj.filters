@@ -155,7 +155,7 @@
     <ClCompile Include="src\cpp\runKernel\GPUElement.cpp">
       <Filter>Source Files\gpuElement</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\runKernel\BufferManger.cpp">
+    <ClCompile Include="src\cpp\runKernel\BufferManager.cpp">
       <Filter>Source Files\gpuElement</Filter>
     </ClCompile>
   </ItemGroup>

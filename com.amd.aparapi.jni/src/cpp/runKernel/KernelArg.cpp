@@ -15,8 +15,12 @@ jfieldID KernelArg::javaArrayFieldID=0;
 jfieldID KernelArg::sizeInBytesFieldID=0;
 jfieldID KernelArg::numElementsFieldID=0; 
 
-KernelArg::KernelArg(JNIEnv *jenv, jobject argObj):
-   argObj(argObj){
+KernelArg::KernelArg(JNIEnv *jenv, jobject argObj, JNIContext *_jniContext):
+   argObj(argObj),
+   arrayBuffer(NULL),
+   aparapiBuffer(NULL),
+   jniContext(_jniContext)
+   {
       javaArg = jenv->NewGlobalRef(argObj);   // save a global ref to the java Arg Object
       if (argClazz == 0){
          jclass c = jenv->GetObjectClass(argObj); 
@@ -32,13 +36,6 @@ KernelArg::KernelArg(JNIEnv *jenv, jobject argObj):
       const char *nameChars = jenv->GetStringUTFChars(nameString, NULL);
       name = strdup(nameChars);
       jenv->ReleaseStringUTFChars(nameString, nameChars);
-
-      BufferManager* bufferManager = BufferManager::getInstance();
-      if (isArray()){
-         arrayBuffer = bufferManager->getArrayBufferFor(jenv, argObj);
-      } else if(isAparapiBuffer()) {
-         aparapiBuffer = bufferManager->getAparapiBufferFor(jenv, argObj, type);
-      }
    }
 
 const char* KernelArg::getTypeName() {
@@ -150,6 +147,51 @@ cl_int KernelArg::setPrimitiveArg(JNIEnv *jenv, int argIdx, int argPos, bool ver
        status = clSetKernelArg(jniContext->kernel, argPos, sizeof(d), &d);
    }
    return status;
+}
+
+void KernelArg::updateReference(JNIEnv *jenv) {
+   this->syncType(jenv);
+
+   if (config->isVerbose()){
+      fprintf(stderr, "got type for %s: %08x\n", this->name, this->type);
+   }
+
+   if (this->isPrimitive()) return;
+
+   if (this->isArray()) {
+      jarray newRef = (jarray)jenv->GetObjectField(this->javaArg, KernelArg::javaArrayFieldID);
+      if (newRef == NULL) {
+         this->arrayBuffer = NULL;
+         return;
+      }
+
+      ArrayBuffer *arrayBuffer = this->arrayBuffer;
+
+      bool doUpdate = false;
+      if (arrayBuffer == NULL) {
+         doUpdate = true;
+      } else if (!jenv->IsSameObject(newRef, this->arrayBuffer->javaObject)) {
+         doUpdate = true;
+      }
+
+      if (doUpdate) {
+         jobject newGlobalRef = (jarray)jenv->NewWeakGlobalRef((jarray)newRef);
+         this->arrayBuffer = BufferManager::getInstance()->getArrayBufferFor(jenv, newGlobalRef);
+         this->arrayBuffer->javaObject = (jarray)jenv->NewWeakGlobalRef((jarray)newRef);
+
+         if (config->isVerbose()){
+            fprintf(stderr, "NewWeakGlobalRef for %s, set to %p\n", this->name,
+               this->arrayBuffer->javaObject);         
+         }
+
+         if (config->isVerbose()) {
+            fprintf(stderr, "updateNonPrimitiveReferences, lengthInBytes=%d\n", this->arrayBuffer->lengthInBytes);
+         }
+
+         this->syncJavaArrayLength(jenv);
+         this->syncSizeInBytes(jenv);
+      } // object has changed
+   }
 }
 
 

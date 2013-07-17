@@ -43,6 +43,10 @@
 #include "ProfileInfo.h"
 
 class ArrayBuffer: public GPUElement {
+      
+   private:
+      void updateArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
+
    public:
       cl_uint length;           // the number of elements for arrays (used only when ARRAYLENGTH bit is set for this arg) 
       void *addr;               // the last address where we saw this java array object
@@ -50,16 +54,13 @@ class ArrayBuffer: public GPUElement {
       jboolean isPinned;
       char memSpec[128];        // The string form of the mask we used for create buffer. for debugging
 
-      ArrayBuffer();
+      ArrayBuffer(JNIEnv* jenv, jobject jobject);
 
       void process(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
 
       void unpinAbort(JNIEnv *jenv);
       void unpinCommit(JNIEnv *jenv);
       void pin(JNIEnv *jenv);
-   
-   private:
-      void updateArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
 };
 
 #endif // ARRAYBUFFER_H
