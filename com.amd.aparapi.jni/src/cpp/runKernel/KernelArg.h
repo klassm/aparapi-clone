@@ -79,6 +79,11 @@ class KernelArg{
       ~KernelArg(){
       }
 
+      /**
+       * Update any non primitive references. For arrays, this means either allocating a new buffer with the array content
+       * if this has not been done before or allocating a new one as the array reference has changed.
+       * @param jenv JNI reference
+       */
       void updateReference(JNIEnv *jenv);
 
       void unpinAbort(JNIEnv *jenv){
