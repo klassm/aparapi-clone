@@ -10,6 +10,7 @@ public class KernelMapping {
    public final Class<? extends Kernel> kernelClass;
    public final List<KernelArg> kernelArgs = new ArrayList<KernelArg>();
    public final Entrypoint entryPoint;
+   public long jniContextHandle;
 
    public KernelMapping(Class<? extends Kernel> kernelClass, Entrypoint entryPoint) {
       this.kernelClass = kernelClass;

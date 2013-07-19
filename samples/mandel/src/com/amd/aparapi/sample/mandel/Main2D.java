@@ -101,10 +101,7 @@ public class Main2D{
       /**
        * Initialize the Kernel.
        *  
-       * @param _width Mandelbrot image width
-       * @param _height Mandelbrot image height
        * @param _rgb Mandelbrot image RGB buffer
-       * @param _pallette Mandelbrot image palette
        */
       public MandelKernel(int[] _rgb) {
          rgb = _rgb;
@@ -257,7 +254,7 @@ public class Main2D{
                // Set the scale and offset, execute the kernel and force a repaint of the viewer.
                kernel.setScaleAndOffset(scale, x, y);
                kernelRunner.execute(kernel, range);
-               final List<ProfileInfo> profileInfo = kernelRunner.getProfileInfo();
+               final List<ProfileInfo> profileInfo = kernelRunner.getProfileInfo(kernel);
                if ((profileInfo != null) && (profileInfo.size() > 0)) {
                   for (final ProfileInfo p : profileInfo) {
                      System.out.print(" " + p.getType() + " " + p.getLabel() + " " + (p.getStart() / 1000) + " .. "

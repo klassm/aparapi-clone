@@ -292,7 +292,7 @@ public abstract class KernelRunnerJNI {
     */
    @DocMe protected native synchronized long initJNI(Kernel _kernel, OpenCLDevice _device, int _flags);
 
-   protected native int getJNI(long _jniContextHandle, Object _array);
+   protected native int getJNI(Object _array);
 
    protected native long buildProgramJNI(long _jniContextHandle, String _source);
 
@@ -300,7 +300,7 @@ public abstract class KernelRunnerJNI {
 
    protected native int runKernelJNI(long _jniContextHandle, Range _range, boolean _needSync, int _passes);
 
-   protected native int disposeJNI(long _jniContextHandle);
+   protected native int disposeJNI();
 
    protected native String getExtensionsJNI(long _jniContextHandle);
 

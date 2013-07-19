@@ -183,7 +183,7 @@ jint getProcess() {
 
 
 JNI_JAVA(jint, KernelRunnerJNI, disposeJNI)
-   (JNIEnv *jenv, jobject jobj, jlong jniContextHandle) {
+   (JNIEnv *jenv, jobject jobj) {
       initialize(jenv);
 
       dispose(jenv);
@@ -1153,13 +1153,16 @@ KernelArg* getArgForBuffer(JNIEnv* jenv, JNIContext* jniContext, jobject buffer)
 
 // Called as a result of Kernel.get(someArray)
 JNI_JAVA(jint, KernelRunnerJNI, getJNI)
-   (JNIEnv *jenv, jobject jobj, jlong jniContextHandle, jobject buffer) {
+   (JNIEnv *jenv, jobject jobj, jobject buffer) {
       initialize(jenv);
 
       cl_int status = CL_SUCCESS;
-      JNIContext* jniContext = JNIContext::getJNIContext(jniContextHandle);
-      if (jniContext != NULL){
-         KernelArg *arg = getArgForBuffer(jenv, jniContext, buffer);
+
+      std::list<JNIContext*> contextList = BufferManager::getInstance()->jniContextList;
+      for (std::list<JNIContext*>::iterator it = contextList.begin(); it != contextList.end(); it++) {
+         JNIContext *context = *it;
+
+         KernelArg *arg = getArgForBuffer(jenv, context, buffer);
          if (arg != NULL){
             if (config->isVerbose()){
                fprintf(stderr, "explicitly reading buffer %s\n", arg->name);
@@ -1169,27 +1172,27 @@ JNI_JAVA(jint, KernelRunnerJNI, getJNI)
 
                try {
                   status = clEnqueueReadBuffer(commandQueue, arg->arrayBuffer->mem, 
-                                               CL_FALSE, 0, 
-                                               arg->arrayBuffer->lengthInBytes,
-                                               arg->arrayBuffer->addr , 0, NULL, 
-                                               &jniContext->readEvents[0]);
+                                                CL_FALSE, 0, 
+                                                arg->arrayBuffer->lengthInBytes,
+                                                arg->arrayBuffer->addr , 0, NULL, 
+                                                &context->readEvents[0]);
                   if (config->isVerbose()){
                      fprintf(stderr, "explicitly read %s ptr=%p len=%d\n", 
-                             arg->name, arg->arrayBuffer->addr, 
-                             arg->arrayBuffer->lengthInBytes );
+                              arg->name, arg->arrayBuffer->addr, 
+                              arg->arrayBuffer->lengthInBytes );
                   }
                   if (status != CL_SUCCESS) throw CLException(status, "clEnqueueReadBuffer()");
 
-                  status = clWaitForEvents(1, jniContext->readEvents);
+                  status = clWaitForEvents(1, context->readEvents);
                   if (status != CL_SUCCESS) throw CLException(status, "clWaitForEvents");
 
                   if (config->isProfilingEnabled()) {
-                     status = profile(&arg->arrayBuffer->read, &jniContext->readEvents[0], 0,
-                                      arg->name, jniContext->profileBaseTime);
+                     status = profile(&arg->arrayBuffer->read, &context->readEvents[0], 0,
+                                       arg->name, context->profileBaseTime);
                      if (status != CL_SUCCESS) throw CLException(status, "profile ");
                   }
 
-                  status = clReleaseEvent(jniContext->readEvents[0]);
+                  status = clReleaseEvent(context->readEvents[0]);
                   if (status != CL_SUCCESS) throw CLException(status, "clReleaseEvent() read event");
 
                   // since this is an explicit buffer get, 
@@ -1205,27 +1208,27 @@ JNI_JAVA(jint, KernelRunnerJNI, getJNI)
 
                try {
                   status = clEnqueueReadBuffer(commandQueue, arg->aparapiBuffer->mem, 
-                                               CL_FALSE, 0, 
-                                               arg->aparapiBuffer->lengthInBytes,
-                                               arg->aparapiBuffer->data, 0, NULL, 
-                                               &jniContext->readEvents[0]);
+                                                CL_FALSE, 0, 
+                                                arg->aparapiBuffer->lengthInBytes,
+                                                arg->aparapiBuffer->data, 0, NULL, 
+                                                &context->readEvents[0]);
                   if (config->isVerbose()){
                      fprintf(stderr, "explicitly read %s ptr=%p len=%d\n", 
-                             arg->name, arg->aparapiBuffer->data, 
-                             arg->aparapiBuffer->lengthInBytes );
+                              arg->name, arg->aparapiBuffer->data, 
+                              arg->aparapiBuffer->lengthInBytes );
                   }
                   if (status != CL_SUCCESS) throw CLException(status, "clEnqueueReadBuffer()");
 
-                  status = clWaitForEvents(1, jniContext->readEvents);
+                  status = clWaitForEvents(1, context->readEvents);
                   if (status != CL_SUCCESS) throw CLException(status, "clWaitForEvents");
 
                   if (config->isProfilingEnabled()) {
-                     status = profile(&arg->aparapiBuffer->read, &jniContext->readEvents[0], 0,
-                                      arg->name, jniContext->profileBaseTime);
+                     status = profile(&arg->aparapiBuffer->read, &context->readEvents[0], 0,
+                                       arg->name, context->profileBaseTime);
                      if (status != CL_SUCCESS) throw CLException(status, "profile "); 
                   }
 
-                  status = clReleaseEvent(jniContext->readEvents[0]);
+                  status = clReleaseEvent(context->readEvents[0]);
                   if (status != CL_SUCCESS) throw CLException(status, "clReleaseEvent() read event");
 
                   arg->aparapiBuffer->inflate(jenv,arg);
@@ -1241,6 +1244,7 @@ JNI_JAVA(jint, KernelRunnerJNI, getJNI)
                fprintf(stderr, "attempt to request to get a buffer that does not appear to be referenced from kernel\n");
             }
          }
+         
       }
       return 0;
    }

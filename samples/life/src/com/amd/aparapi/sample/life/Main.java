@@ -215,7 +215,7 @@ public class Main{
          @Override public void paintComponent(Graphics g) {
             if (kernelRunner.isExplicit()) {
                kernelRunner.get(lifeKernel.imageData); // We only pull the imageData when we intend to use it.
-               final List<ProfileInfo> profileInfo = kernelRunner.getProfileInfo();
+               final List<ProfileInfo> profileInfo = kernelRunner.getProfileInfo(lifeKernel);
                if (profileInfo != null) {
                   for (final ProfileInfo p : profileInfo) {
                      System.out.print(" " + p.getType() + " " + p.getLabel() + " " + (p.getStart() / 1000) + " .. "

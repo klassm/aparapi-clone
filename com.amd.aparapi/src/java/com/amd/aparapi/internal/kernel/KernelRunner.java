@@ -84,8 +84,6 @@ public class KernelRunner extends KernelRunnerJNI {
 
    private static Logger logger = Logger.getLogger(Config.getLoggerName());
 
-   private long jniContextHandle = 0;
-
    private Map<Class<? extends Kernel>, KernelMapping> kernelMappingMap = new HashMap<Class<? extends Kernel>, KernelMapping>();
 
    private final ExecutorService threadPool = Executors.newCachedThreadPool();
@@ -107,13 +105,14 @@ public class KernelRunner extends KernelRunnerJNI {
    private OpenCLDevice lastGPUExecutionDevice = null;
 
    /**
-    * <code>Kernel.dispose()</code> delegates to <code>KernelRunner.dispose()</code> which delegates to <code>disposeJNI()</code> to actually close JNI data structures.<br/>
+    * <code>Kernel.dispose()</code> delegates to <code>KernelRunner.dispose()</code> which delegates to
+    * <code>disposeJNI()</code> to actually close JNI data structures.<br/>
     *
-    * @see #disposeJNI(long)
+    * @see #disposeJNI()
     */
    public void dispose() {
       if (getExecutionMode().isOpenCL()) {
-         disposeJNI(jniContextHandle);
+         disposeJNI();
       }
       threadPool.shutdownNow();
    }
@@ -852,7 +851,7 @@ public class KernelRunner extends KernelRunnerJNI {
       }
 
       // native side will reallocate array buffers if necessary
-      if (runKernelJNI(jniContextHandle, _range, needSync, _passes) != 0) {
+      if (runKernelJNI(kernelMapping.jniContextHandle, _range, needSync, _passes) != 0) {
          logger.warning("### CL exec seems to have failed. Trying to revert to Java ###");
          setFallbackExecutionMode();
          return execute(kernel, _range, _passes);
@@ -979,14 +978,15 @@ public class KernelRunner extends KernelRunnerJNI {
                      // code that requires the capabilities.
 
                      // synchronized(Kernel.class){
-                     jniContextHandle = initJNI(kernel, openCLDevice, jniFlags); // openCLDevice will not be null here
+                     long jniContextHandle = initJNI(kernel, openCLDevice, jniFlags); // openCLDevice will not be null here
+                     currentKernelMapping.jniContextHandle = jniContextHandle;
                   } // end of synchronized! issue 68
 
-                  if (jniContextHandle == 0) {
+                  if (currentKernelMapping.jniContextHandle == 0) {
                      return warnFallBackAndExecute(kernel, _range, _passes, "initJNI failed to return a valid handle");
                   }
 
-                  final String extensions = getExtensionsJNI(jniContextHandle);
+                  final String extensions = getExtensionsJNI(currentKernelMapping.jniContextHandle);
                   capabilitiesSet = new HashSet<String>();
 
                   final StringTokenizer strTok = new StringTokenizer(extensions);
@@ -1032,7 +1032,7 @@ public class KernelRunner extends KernelRunnerJNI {
                   }
 
                   // Send the string to OpenCL to compile it
-                  if (buildProgramJNI(jniContextHandle, openCL) == 0) {
+                  if (buildProgramJNI(currentKernelMapping.jniContextHandle, openCL) == 0) {
                      return warnFallBackAndExecute(kernel, _range, _passes, "OpenCL compile failed");
                   }
 
@@ -1047,7 +1047,7 @@ public class KernelRunner extends KernelRunnerJNI {
                   // (private buffers do not get treated as arguments)
 
                   KernelArg[] kernelArgsArray = currentKernelMapping.kernelArgsAsArray();
-                  setArgsJNI(jniContextHandle, kernelArgsArray, kernelArgsArray.length);
+                  setArgsJNI(currentKernelMapping.jniContextHandle, kernelArgsArray, kernelArgsArray.length);
 
                   conversionTime = System.currentTimeMillis() - executeStartTime;
 
@@ -1323,10 +1323,19 @@ public class KernelRunner extends KernelRunnerJNI {
 
    private final Set<Object> puts = new HashSet<Object>();
 
-   public List<ProfileInfo> getProfileInfo() {
+   public List<ProfileInfo> getProfileInfo(Kernel kernel) {
+      return getProfileInfo(kernel.getClass());
+   }
+
+   public List<ProfileInfo> getProfileInfo(Class<? extends Kernel> kernelClass) {
+      KernelMapping kernelMapping = kernelMappingMap.get(kernelClass);
+      if (kernelMapping == null) {
+         throw new IllegalArgumentException("cannot find kernel for " + kernelClass.getName());
+      }
+
       if (((getExecutionMode() == EXECUTION_MODE.GPU) || (getExecutionMode() == EXECUTION_MODE.CPU))) {
          // Only makes sense when we are using OpenCL
-         return (getProfileInfoJNI(jniContextHandle));
+         return (getProfileInfoJNI(kernelMapping.jniContextHandle));
       } else {
          return (null);
       }
@@ -1834,7 +1843,7 @@ public class KernelRunner extends KernelRunnerJNI {
       if (explicit
             && ((getExecutionMode() == EXECUTION_MODE.GPU) || (getExecutionMode() == EXECUTION_MODE.CPU))) {
          // Only makes sense when we are using OpenCL
-         getJNI(jniContextHandle, array);
+         getJNI(array);
       }
    }
 
