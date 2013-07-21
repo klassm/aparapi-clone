@@ -40,11 +40,12 @@ class BufferManager {
        * @return buffer
        */
       AparapiBuffer* getAparapiBufferFor(JNIEnv *jenv, jobject argObj, jint type);
+      void cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce);
       void cleanUpNonReferencedBuffers(JNIEnv *jenv);
 
    private:
-      BufferManager() {}
-      ~BufferManager() {}
+      BufferManager();
+      
       std::list<AparapiBuffer> aparapiBufferList;
       std::list<ArrayBuffer> arrayBufferList;
 	   void cleanUp(GPUElement* gpuElement, JNIEnv *jenv);

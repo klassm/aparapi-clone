@@ -2,6 +2,11 @@
 #include "JNIContext.h"
 #include "List.h"
 
+BufferManager::BufferManager() {
+   this->createdNewAparapiBuffer = false;
+   this->createdNewArrayBuffer = false;
+}
+
 ArrayBuffer* BufferManager::getArrayBufferFor(JNIEnv *jenv, jobject argObj) {
    ArrayBuffer* result = this->findArrayBufferForReference(jenv, argObj);
    if (result == NULL) {
@@ -48,15 +53,15 @@ ArrayBuffer* BufferManager::findArrayBufferForReference(JNIEnv *jenv, jobject ar
 
 BufferManager* BufferManager::getInstance() {
    static BufferManager theInstance;
-
-   theInstance.createdNewAparapiBuffer = false;
-   theInstance.createdNewArrayBuffer = false;
-
    return &theInstance;
 }
 
 void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv) {
-   if (! createdNewAparapiBuffer && ! createdNewArrayBuffer) return;
+   this->cleanUpNonReferencedBuffers(jenv, false);
+}
+
+void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
+   if (! enforce && ! createdNewAparapiBuffer && ! createdNewArrayBuffer) return;
 
    std::list<AparapiBuffer> aparapiBufferCopy(aparapiBufferList.begin(), aparapiBufferList.end());
    std::list<ArrayBuffer> arrayBufferCopy(arrayBufferList.begin(), arrayBufferList.end());

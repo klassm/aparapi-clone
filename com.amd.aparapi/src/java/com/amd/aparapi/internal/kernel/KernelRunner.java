@@ -104,6 +104,8 @@ public class KernelRunner extends KernelRunnerJNI {
 
    private OpenCLDevice lastGPUExecutionDevice = null;
 
+   private final Set<Object> puts = new HashSet<Object>();
+
    /**
     * <code>Kernel.dispose()</code> delegates to <code>KernelRunner.dispose()</code> which delegates to
     * <code>disposeJNI()</code> to actually close JNI data structures.<br/>
@@ -1320,8 +1322,6 @@ public class KernelRunner extends KernelRunnerJNI {
       }
       arg.setSizeInBytes(totalElements * primitiveSize);
    }
-
-   private final Set<Object> puts = new HashSet<Object>();
 
    public List<ProfileInfo> getProfileInfo(Kernel kernel) {
       return getProfileInfo(kernel.getClass());
