@@ -165,19 +165,17 @@ void KernelArg::updateReference(JNIEnv *jenv) {
          return;
       }
 
-      ArrayBuffer *arrayBuffer = this->arrayBuffer;
 
       bool doUpdate = false;
-      if (arrayBuffer == NULL) {
+      if (this->arrayBuffer == NULL) {
          doUpdate = true;
       } else if (!jenv->IsSameObject(newRef, this->arrayBuffer->javaObject)) {
          doUpdate = true;
       }
 
       if (doUpdate) {
-         jobject newGlobalRef = (jarray)jenv->NewWeakGlobalRef((jarray)newRef);
-         this->arrayBuffer = BufferManager::getInstance()->getArrayBufferFor(jenv, newGlobalRef);
-         this->arrayBuffer->javaObject = (jarray)jenv->NewWeakGlobalRef((jarray)newRef);
+         //jobject newGlobalRef = (jarray)jenv->NewWeakGlobalRef((jarray)newRef);
+         this->arrayBuffer = BufferManager::getInstance()->getArrayBufferFor(jenv, newRef);
 
          if (config->isVerbose()){
             fprintf(stderr, "NewWeakGlobalRef for %s, set to %p\n", this->name,

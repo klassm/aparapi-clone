@@ -46,8 +46,8 @@ class BufferManager {
    private:
       BufferManager();
       
-      std::list<AparapiBuffer> aparapiBufferList;
-      std::list<ArrayBuffer> arrayBufferList;
+      std::list<AparapiBuffer*> aparapiBufferList;
+      std::list<ArrayBuffer*> arrayBufferList;
 	   void cleanUp(GPUElement* gpuElement, JNIEnv *jenv);
 
       bool createdNewArrayBuffer;
