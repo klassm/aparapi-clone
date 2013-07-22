@@ -40,12 +40,13 @@
 #include "JNIContext.h"
 #include "List.h"
 
-ArrayBuffer::ArrayBuffer(JNIEnv* jenv, jobject jobject):
+ArrayBuffer::ArrayBuffer(JNIEnv* jenv, jobject localReference):
    length(0),
    addr(NULL),
    isCopy(false),
    isPinned(false){
-      this->javaObject = jobject;
+      jobject globalReference = jenv->NewGlobalRef(localReference);
+      this->javaObject = globalReference;
    }
 
 void ArrayBuffer::unpinAbort(JNIEnv *jenv){
@@ -53,7 +54,7 @@ void ArrayBuffer::unpinAbort(JNIEnv *jenv){
    isPinned = JNI_FALSE;
 }
 void ArrayBuffer::unpinCommit(JNIEnv *jenv){
-jenv->ReleasePrimitiveArrayCritical((jarray)this->javaObject, addr, 0);
+   jenv->ReleasePrimitiveArrayCritical((jarray)this->javaObject, addr, 0);
    isPinned = JNI_FALSE;
 }
 void ArrayBuffer::pin(JNIEnv *jenv){
@@ -71,11 +72,14 @@ void ArrayBuffer::process(JNIEnv* jenv, cl_context context, JNIContext* jniConte
       arg->arrayBuffer->write.valid = false;
    }
 
-   // pin the arrays so that GC does not move them during the call
 
-   // get the C memory address for the region being transferred
    // this uses different JNI calls for arrays vs. directBufs
+   
    void * prevAddr =  arg->arrayBuffer->addr;
+
+   // pin the arrays so that GC does not move them during the call
+   // get the C memory address for the region being transferred
+
    arg->pin(jenv);
 
    if (config->isVerbose()) {
@@ -103,29 +107,21 @@ void ArrayBuffer::process(JNIEnv* jenv, cl_context context, JNIContext* jniConte
       }
    }
 
-   if (jniContext->firstRun || (arg->arrayBuffer->mem == 0) || objectMoved ){
-      if (this->mem != 0 && objectMoved) {
-         // we need to release the old buffer 
-         if (config->isTrackingOpenCLResources()) {
-            memList.remove((cl_mem)arg->arrayBuffer->mem, __LINE__, __FILE__);
-         }
-         status = clReleaseMemObject((cl_mem)this->mem);
-         //fprintf(stdout, "dispose arg %d %0lx\n", i, arg->arrayBuffer->mem);
-
-         //this needs to be reported, but we can still keep going
-         CLException::checkCLError(status, "clReleaseMemObject()");
-
-         this->mem = (cl_mem)0;
+   if (jniContext->firstRun || (this->mem == 0) || objectMoved ){
+      if (this->mem == 0) {
+         updateArray(jenv, context, jniContext, arg, argPos, argIdx);
       }
-
-      updateArray(jenv, context, jniContext, arg, argPos, argIdx);
-
    } else {
       // Keep the arg position in sync if no updates were required
       if (arg->usesArrayLength()){
          argPos++;
       }
    }
+
+   // We do not need to create a new memory each time the buffer is accessed, but we
+   // want to set the buffer as kernel arg to each KernelArg it is referenced by!
+   status = clSetKernelArg(jniContext->kernel, argPos, sizeof(cl_mem), (void *)&(this->mem));
+   if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (array)");
 }
 
 void ArrayBuffer::updateArray(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
@@ -150,16 +146,14 @@ void ArrayBuffer::updateArray(JNIEnv* jenv, cl_context context, JNIContext* jniC
    }
 
    this->mem = clCreateBuffer(context, this->memMask, 
-         this->lengthInBytes, this->addr, &status);
+      this->lengthInBytes, this->addr, &status);
+
 
    if(status != CL_SUCCESS) throw CLException(status,"clCreateBuffer");
 
    if (config->isTrackingOpenCLResources()){
       memList.add(this->mem, __LINE__, __FILE__);
    }
-
-   status = clSetKernelArg(jniContext->kernel, argPos, sizeof(cl_mem), (void *)&(this->mem));
-   if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (array)");
 
    // Add the array length if needed
    if (arg->usesArrayLength()) {

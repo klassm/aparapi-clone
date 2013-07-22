@@ -165,7 +165,6 @@ void KernelArg::updateReference(JNIEnv *jenv) {
          return;
       }
 
-
       bool doUpdate = false;
       if (this->arrayBuffer == NULL) {
          doUpdate = true;
@@ -174,17 +173,7 @@ void KernelArg::updateReference(JNIEnv *jenv) {
       }
 
       if (doUpdate) {
-         //jobject newGlobalRef = (jarray)jenv->NewWeakGlobalRef((jarray)newRef);
          this->arrayBuffer = BufferManager::getInstance()->getArrayBufferFor(jenv, newRef);
-
-         if (config->isVerbose()){
-            fprintf(stderr, "NewWeakGlobalRef for %s, set to %p\n", this->name,
-               this->arrayBuffer->javaObject);         
-         }
-
-         if (config->isVerbose()) {
-            fprintf(stderr, "updateNonPrimitiveReferences, lengthInBytes=%d\n", this->arrayBuffer->lengthInBytes);
-         }
 
          this->syncJavaArrayLength(jenv);
          this->syncSizeInBytes(jenv);

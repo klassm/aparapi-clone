@@ -78,6 +78,34 @@ public class MultipleKernelCall {
       assertEquals(kernelRunner.getExecutionMode(), EXECUTION_MODE.GPU);
    }
 
+   @Test
+   public void testMultipleKernelCallExplicitMultipleRuns() {
+      KernelRunner kernelRunner = new KernelRunner();
+      kernelRunner.setExplicit(true);
+      kernelRunner.setExecutionMode(EXECUTION_MODE.GPU);
+
+
+      int[] values = new int[20000];
+      for (int i = 0; i < values.length; i++) {
+         values[i] = 10;
+      }
+      kernelRunner.put(values);
+
+      ArrayDecrement decrement = new ArrayDecrement(values);
+      ArrayIncrement increment = new ArrayIncrement(values);
+
+      int runs = 10000;
+      for (int r = 0; r < runs; r++) {
+         kernelRunner.execute(increment, values.length);
+         kernelRunner.execute(decrement, values.length);
+
+         assertEquals(kernelRunner.getExecutionMode(), EXECUTION_MODE.GPU);
+      }
+
+      kernelRunner.get(values);
+      assertValuesGet(values, 10 + runs);
+   }
+
    private void assertValuesGet(int[] values, int expected) {
       for (int value : values) {
          assertEquals(expected, value);

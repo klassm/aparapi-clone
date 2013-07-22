@@ -7,10 +7,10 @@ BufferManager::BufferManager() {
    this->createdNewArrayBuffer = false;
 }
 
-ArrayBuffer* BufferManager::getArrayBufferFor(JNIEnv *jenv, jobject argObj) {
-   ArrayBuffer* result = this->findArrayBufferForReference(jenv, argObj);
+ArrayBuffer* BufferManager::getArrayBufferFor(JNIEnv *jenv, jobject reference) {
+   ArrayBuffer* result = this->findArrayBufferForReference(jenv, reference);
    if (result == NULL) {
-      result = new ArrayBuffer(jenv, argObj);
+      result = new ArrayBuffer(jenv, reference);
       std::list<ArrayBuffer*>::iterator it = arrayBufferList.begin();
       arrayBufferList.insert(it, result);
 
@@ -20,10 +20,10 @@ ArrayBuffer* BufferManager::getArrayBufferFor(JNIEnv *jenv, jobject argObj) {
    return NULL;
 }
 
-AparapiBuffer* BufferManager::getAparapiBufferFor(JNIEnv *jenv, jobject argObj, jint type) {
-   AparapiBuffer* result = this->findAparapiBufferForReference(jenv, argObj);
+AparapiBuffer* BufferManager::getAparapiBufferFor(JNIEnv *jenv, jobject reference, jint type) {
+   AparapiBuffer* result = this->findAparapiBufferForReference(jenv, reference);
    if (result == NULL) {
-      result = AparapiBuffer::flatten(jenv, argObj, type);
+      result = AparapiBuffer::flatten(jenv, reference, type);
       std::list<AparapiBuffer*>::iterator it = aparapiBufferList.begin();
       aparapiBufferList.insert(it, result);
 
@@ -33,20 +33,20 @@ AparapiBuffer* BufferManager::getAparapiBufferFor(JNIEnv *jenv, jobject argObj, 
    return NULL;
 }
 
-AparapiBuffer* BufferManager::findAparapiBufferForReference(JNIEnv *jenv, jobject argObj) {
+AparapiBuffer* BufferManager::findAparapiBufferForReference(JNIEnv *jenv, jobject reference) {
    for (std::list<AparapiBuffer*>::iterator it = aparapiBufferList.begin(); it != aparapiBufferList.end(); it++) {
       jobject object = (*it)->javaObject;
-      if (jenv->IsSameObject(argObj, object)) {
+      if (jenv->IsSameObject(reference, object)) {
          return *it;
       }
    }
    return NULL;
 }
 
-ArrayBuffer* BufferManager::findArrayBufferForReference(JNIEnv *jenv, jobject argObj) {
+ArrayBuffer* BufferManager::findArrayBufferForReference(JNIEnv *jenv, jobject reference) {
    for (std::list<ArrayBuffer*>::iterator it = arrayBufferList.begin(); it != arrayBufferList.end(); it++) {
       jobject object = (*it)->javaObject;
-      if (jenv->IsSameObject(argObj, object)) {
+      if (jenv->IsSameObject(reference, object)) {
          return *it;
       }
    }
@@ -129,9 +129,9 @@ void BufferManager::cleanUp(GPUElement* gpuElement, JNIEnv *jenv) {
 	cl_int status = CL_SUCCESS;
 
 	if (gpuElement->javaObject != NULL) {
-		jenv->DeleteWeakGlobalRef((jweak) gpuElement->javaObject);
+      jenv->DeleteGlobalRef(gpuElement->javaObject);
 		if (config->isVerbose()){
-			fprintf(stderr, "DeleteWeakGlobalRef for %p\n", gpuElement->javaObject);         
+			fprintf(stderr, "DeleteGlobalRef for %p\n", gpuElement->javaObject);         
 		}
 	}
 

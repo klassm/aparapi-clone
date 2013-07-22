@@ -689,6 +689,7 @@ void enqueueKernel(JNIContext* jniContext, Range& range, int passes, int argPos,
             writeCount,
             writeEvents,
             &jniContext->executeEvents[0]);
+      clFinish(commandQueue);
 
       if (status != CL_SUCCESS) {
 
