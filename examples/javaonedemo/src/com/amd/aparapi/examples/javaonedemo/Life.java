@@ -60,9 +60,11 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.WindowConstants;
 
+import com.amd.aparapi.EXECUTION_MODE;
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.ProfileInfo;
 import com.amd.aparapi.Range;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 
 /**
  * An example Aparapi application which demonstrates Conways 'Game Of Life'.
@@ -115,7 +117,7 @@ public class Life{
 
       private int toBase;
 
-      public LifeKernel(int _width, int _height, BufferedImage _image) {
+      public LifeKernel(int _width, int _height, BufferedImage _image, KernelRunner kernelRunner) {
 
          imageData = ((DataBufferInt) _image.getRaster().getDataBuffer()).getData();
          width = _width;
@@ -123,7 +125,7 @@ public class Life{
          range = Range.create(width * height, 256);
          System.out.println("range = " + range);
 
-         setExplicit(true); // This gives us a performance boost for GPU mode.
+         kernelRunner.setExplicit(true); // This gives us a performance boost for GPU mode.
 
          fromBase = height * width;
          toBase = 0;
@@ -134,7 +136,7 @@ public class Life{
             imageData[fromBase + i] = LifeKernel.ALIVE;
          }
 
-         put(imageData); // Because we are using explicit buffer management we must put the imageData array
+         kernelRunner.put(imageData); // Because we are using explicit buffer management we must put the imageData array
 
       }
 
@@ -170,13 +172,13 @@ public class Life{
 
       }
 
-      public void nextGeneration() {
+      public void nextGeneration(KernelRunner kernelRunner) {
          // swap fromBase and toBase
          final int swap = fromBase;
          fromBase = toBase;
          toBase = swap;
 
-         execute(range);
+         kernelRunner.execute(this, range);
 
       }
 
@@ -193,6 +195,7 @@ public class Life{
    static double generationsPerSecondField = 0;
 
    public static void main(String[] _args) {
+      final KernelRunner kernelRunner = new KernelRunner();
 
       final JFrame frame = new JFrame("Game of Life");
       final int width = Integer.getInteger("width", 1024 + 256);
@@ -203,8 +206,8 @@ public class Life{
       // and bottom to top in alternate generation passses. The LifeKernel will track which pass is which
       final BufferedImage image = new BufferedImage(width, height * 2, BufferedImage.TYPE_INT_RGB);
 
-      final LifeKernel lifeKernel = new LifeKernel(width, height, image);
-      lifeKernel.setExecutionMode(Kernel.EXECUTION_MODE.JTP);
+      final LifeKernel lifeKernel = new LifeKernel(width, height, image, kernelRunner);
+      kernelRunner.setExecutionMode(EXECUTION_MODE.GPU);
 
       final Font font = new Font("Garamond", Font.BOLD, 100);
       // Create a component for viewing the offsecreen image
@@ -212,9 +215,9 @@ public class Life{
          @Override public void paintComponent(Graphics g) {
             g.setFont(font);
             g.setColor(Color.WHITE);
-            if (lifeKernel.isExplicit()) {
-               lifeKernel.get(lifeKernel.imageData); // We only pull the imageData when we intend to use it.
-               final List<ProfileInfo> profileInfo = lifeKernel.getProfileInfo();
+            if (kernelRunner.isExplicit() && kernelRunner.hasProfileInfo(lifeKernel.getClass())) {
+               kernelRunner.get(lifeKernel.imageData); // We only pull the imageData when we intend to use it.
+               final List<ProfileInfo> profileInfo = kernelRunner.getProfileInfo(lifeKernel);
                if (profileInfo != null) {
                   for (final ProfileInfo p : profileInfo) {
                      System.out.print(" " + p.getType() + " " + p.getLabel() + " " + (p.getStart() / 1000) + " .. "
@@ -264,9 +267,9 @@ public class Life{
          @Override public void itemStateChanged(ItemEvent e) {
             final String item = (String) modeButton.getSelectedItem();
             if (item.equals(choices[0])) {
-               lifeKernel.setExecutionMode(Kernel.EXECUTION_MODE.JTP);
+               kernelRunner.setExecutionMode(EXECUTION_MODE.JTP);
             } else if (item.equals(choices[1])) {
-               lifeKernel.setExecutionMode(Kernel.EXECUTION_MODE.GPU);
+               kernelRunner.setExecutionMode(EXECUTION_MODE.GPU);
             }
          }
 
@@ -293,7 +296,7 @@ public class Life{
       }
       start = System.currentTimeMillis();
       while (true) {
-         lifeKernel.nextGeneration(); // Work is performed here
+         lifeKernel.nextGeneration(kernelRunner); // Work is performed here
          generations++;
          viewer.repaint(); // Request a repaint of the viewer (causes paintComponent(Graphics) to be called later not synchronous
       }

@@ -65,6 +65,7 @@ import javax.swing.WindowConstants;
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.ProfileInfo;
 import com.amd.aparapi.Range;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 import com.jogamp.opengl.util.FPSAnimator;
 import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.TextureIO;
@@ -94,13 +95,14 @@ public class Local{
 
       private final float[] vxyz; // velocity component of x,y and z of bodies 
 
-      @Local private final float[] localStuff; // local memory
+      @com.amd.aparapi.annotation.Local private final float[] localStuff; // local memory
 
       /**
        * Constructor initializes xyz and vxyz arrays.
-       * @param _bodies
+       * @param _range
+       * @param kernelRunner
        */
-      public NBodyKernel(Range _range) {
+      public NBodyKernel(Range _range, KernelRunner kernelRunner) {
          range = _range;
          localStuff = new float[range.getLocalSize(0) * 3];
 
@@ -124,7 +126,7 @@ public class Local{
                xyz[body + 0] -= maxDist * 1.5;
             }
          }
-         setExplicit(true);
+         kernelRunner.setExplicit(true);
       }
 
       /** 
@@ -206,7 +208,9 @@ public class Local{
 
    public static void main(String _args[]) {
 
-      final NBodyKernel kernel = new NBodyKernel(Range.create(Integer.getInteger("bodies", 8192), 256));
+      final KernelRunner kernelRunner = new KernelRunner();
+
+      final NBodyKernel kernel = new NBodyKernel(Range.create(Integer.getInteger("bodies", 8192), 256), kernelRunner);
 
       final JFrame frame = new JFrame("NBody");
 
@@ -223,7 +227,7 @@ public class Local{
          }
       });
       controlPanel.add(startButton);
-      controlPanel.add(new JLabel(kernel.getExecutionMode().toString()));
+      controlPanel.add(new JLabel(kernelRunner.getExecutionMode().toString()));
 
       controlPanel.add(new JLabel("   Particles"));
       controlPanel.add(new JTextField("" + kernel.range.getGlobalSize(0), 5));
@@ -270,7 +274,7 @@ public class Local{
          private long last = System.currentTimeMillis();
 
          @Override public void dispose(GLAutoDrawable drawable) {
-
+            kernelRunner.dispose();
          }
 
          @Override public void display(GLAutoDrawable drawable) {
@@ -286,11 +290,11 @@ public class Local{
 
             glu.gluLookAt(xeye, yeye, zeye * zoomFactor, xat, yat, zat, 0f, 1f, 0f);
             if (running) {
-               kernel.execute(kernel.range);
-               if (kernel.isExplicit()) {
-                  kernel.get(kernel.xyz);
+               kernelRunner.execute(kernel, kernel.range);
+               if (kernelRunner.isExplicit()) {
+                  kernelRunner.get(kernel.xyz);
                }
-               final List<ProfileInfo> profileInfo = kernel.getProfileInfo();
+               final List<ProfileInfo> profileInfo = kernelRunner.getProfileInfo(kernel);
                if ((profileInfo != null) && (profileInfo.size() > 0)) {
                   for (final ProfileInfo p : profileInfo) {
                      System.out.print(" " + p.getType() + " " + p.getLabel() + ((p.getEnd() - p.getStart()) / 1000) + "us");

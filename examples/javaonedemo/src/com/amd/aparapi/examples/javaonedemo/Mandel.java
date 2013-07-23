@@ -60,10 +60,12 @@ import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+import com.amd.aparapi.EXECUTION_MODE;
 import com.amd.aparapi.annotation.*;
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.ProfileInfo;
 import com.amd.aparapi.Range;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 
 /**
  * An example Aparapi application which displays a view of the Mandelbrot set and lets the user zoom in to a particular point. 
@@ -175,6 +177,7 @@ public class Mandel{
    public static long start = 0;
 
    @SuppressWarnings("serial") public static void main(String[] _args) {
+      final KernelRunner kernelRunner = new KernelRunner();
 
       final JFrame frame = new JFrame("MandelBrot");
 
@@ -235,13 +238,13 @@ public class Mandel{
             // modeButton = gpuMandelBrot;
             //   } else 
             if (item.equals(choices[0])) {
-               kernel.setExecutionMode(Kernel.EXECUTION_MODE.JTP);
+               kernelRunner.setExecutionMode(EXECUTION_MODE.JTP);
                frameCount = 0;
                start = System.currentTimeMillis();
 
                // modeButton = javaMandelBrot;
             } else if (item.equals(choices[1])) {
-               kernel.setExecutionMode(Kernel.EXECUTION_MODE.GPU);
+               kernelRunner.setExecutionMode(EXECUTION_MODE.GPU);
                frameCount = 0;
                start = System.currentTimeMillis();
                // modeButton = javaMandelBrotMultiThread;
@@ -276,15 +279,15 @@ public class Mandel{
 
       // Set the default scale and offset, execute the kernel and force a repaint of the viewer.
       kernel.setScaleAndOffset(defaultScale, -1f, 0f);
-      kernel.execute(range);
-      kernel.setExecutionMode(Kernel.EXECUTION_MODE.JTP);
+      kernelRunner.execute(kernel, range);
+      kernelRunner.setExecutionMode(EXECUTION_MODE.JTP);
       System.arraycopy(rgb, 0, imageRgb, 0, rgb.length);
       viewer.repaint();
 
       // Window listener to dispose Kernel resources on user exit.
       frame.addWindowListener(new WindowAdapter(){
          @Override public void windowClosing(WindowEvent _windowEvent) {
-            kernel.dispose();
+            kernelRunner.dispose();
             System.exit(0);
          }
       });
@@ -322,8 +325,8 @@ public class Mandel{
 
                // Set the scale and offset, execute the kernel and force a repaint of the viewer.
                kernel.setScaleAndOffset(scale, x, y);
-               kernel.execute(range);
-               final List<ProfileInfo> profileInfo = kernel.getProfileInfo();
+               kernelRunner.execute(kernel, range);
+               final List<ProfileInfo> profileInfo = kernelRunner.getProfileInfo(kernel);
                if ((profileInfo != null) && (profileInfo.size() > 0)) {
                   for (final ProfileInfo p : profileInfo) {
                      System.out.print(" " + p.getType() + " " + p.getLabel() + " " + (p.getStart() / 1000) + " .. "

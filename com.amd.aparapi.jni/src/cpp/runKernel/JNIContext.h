@@ -56,8 +56,8 @@ public:
     */
    void unpinAll(JNIEnv* jenv);
 
-   cl_int JNIContext::setLocalAparapiBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose, KernelArg *kernelArg);
-   cl_int JNIContext::setLocalBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose, KernelArg *kernelArg);
+   cl_int setLocalAparapiBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose, KernelArg *kernelArg);
+   cl_int setLocalBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose, KernelArg *kernelArg);
 };
 
 

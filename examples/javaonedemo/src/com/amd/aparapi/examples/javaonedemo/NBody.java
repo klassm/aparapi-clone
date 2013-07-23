@@ -65,9 +65,11 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.WindowConstants;
 
+import com.amd.aparapi.EXECUTION_MODE;
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.ProfileInfo;
 import com.amd.aparapi.Range;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 import com.jogamp.opengl.util.FPSAnimator;
 import com.jogamp.opengl.util.gl2.GLUT;
 import com.jogamp.opengl.util.texture.Texture;
@@ -75,13 +77,13 @@ import com.jogamp.opengl.util.texture.TextureIO;
 
 /**
  * NBody implementing demonstrating Aparapi kernels. 
- * 
+ *
  * For a description of the NBody problem. 
- * @see http://en.wikipedia.org/wiki/N-body_problem
- * 
+ * @see <a href="http://en.wikipedia.org/wiki/N-body_problem">http://en.wikipedia.org/wiki/N-body_problem</a>
+ *
  * We use JOGL to render the bodies. 
- * @see http://jogamp.org/jogl/www/
- * 
+ * @see <a href="http://jogamp.org/jogl/www/">http://jogamp.org/jogl/www/</a>
+ *
  * @author gfrost
  *
  */
@@ -102,7 +104,7 @@ public class NBody{
 
       /**
        * Constructor initializes xyz and vxyz arrays.
-       * @param _bodies
+       * @param _range
        */
       public NBodyKernel(Range _range) {
          range = _range;
@@ -129,10 +131,9 @@ public class NBody{
                xyz[body + 0] -= maxDist * 1.5;
             }
          }
-         setExplicit(true);
       }
 
-      /** 
+      /**
        * Here is the kernel entrypoint. Here is where we calculate the position of each body
        */
       @Override public void run() {
@@ -201,9 +202,10 @@ public class NBody{
    public static Texture texture;
 
    public static void main(String _args[]) {
+      final KernelRunner kernelRunner = new KernelRunner();
 
       final NBodyKernel kernel = new NBodyKernel(Range.create(Integer.getInteger("bodies", 10000)));
-      kernel.setExecutionMode(Kernel.EXECUTION_MODE.JTP);
+      kernelRunner.setExecutionMode(EXECUTION_MODE.JTP);
       final JFrame frame = new JFrame("NBody");
 
       final JPanel panel = new JPanel(new BorderLayout());
@@ -238,13 +240,13 @@ public class NBody{
             // modeButton = gpuMandelBrot;
             //   } else 
             if (item.equals(choices[0])) {
-               kernel.setExecutionMode(Kernel.EXECUTION_MODE.JTP);
+               kernelRunner.setExecutionMode(EXECUTION_MODE.JTP);
 
                // modeButton = javaMandelBrot;
             } else if (item.equals(choices[1])) {
                // lifeKernel = lifeKernelGPU;
                // modeButton = javaMandelBrotMultiThread;
-               kernel.setExecutionMode(Kernel.EXECUTION_MODE.GPU);
+               kernelRunner.setExecutionMode(EXECUTION_MODE.GPU);
             }
          }
 
@@ -287,7 +289,7 @@ public class NBody{
          private long last = System.currentTimeMillis();
 
          @Override public void dispose(GLAutoDrawable drawable) {
-
+            kernelRunner.dispose();
          }
 
          @Override public void display(GLAutoDrawable drawable) {
@@ -305,11 +307,11 @@ public class NBody{
 
             glu.gluLookAt(xeye, yeye, zeye * zoomFactor, xat, yat, zat, 0f, 1f, 0f);
             if (running) {
-               kernel.execute(kernel.range);
-               if (kernel.isExplicit()) {
-                  kernel.get(kernel.xyz);
+               kernelRunner.execute(kernel, kernel.range);
+               if (kernelRunner.isExplicit()) {
+                  kernelRunner.get(kernel.xyz);
                }
-               final List<ProfileInfo> profileInfo = kernel.getProfileInfo();
+               final List<ProfileInfo> profileInfo = kernelRunner.getProfileInfo(kernel);
                if ((profileInfo != null) && (profileInfo.size() > 0)) {
                   for (final ProfileInfo p : profileInfo) {
                      System.out.print(" " + p.getType() + " " + p.getLabel() + ((p.getEnd() - p.getStart()) / 1000) + "us");

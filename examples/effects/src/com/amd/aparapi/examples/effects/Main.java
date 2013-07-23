@@ -54,6 +54,7 @@ import javax.swing.JFrame;
 
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.Range;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 
 /**
  * An example Aparapi application which tracks the mouse and updates the color pallete of the window based on the distance from the mouse pointer. 
@@ -153,6 +154,7 @@ public class Main{
    public static volatile Point mousePosition = null;
 
    @SuppressWarnings("serial") public static void main(String[] _args) {
+      final KernelRunner kernelRunner = new KernelRunner();
 
       JFrame frame = new JFrame("MouseTracker");
 
@@ -237,17 +239,17 @@ public class Main{
 
       int trailLastUpdatedPosition = 0;
 
-      kernel.execute(range);
+      kernelRunner.execute(kernel, range);
       System.arraycopy(rgb, 0, imageRgb, 0, rgb.length);
       viewer.repaint();
 
       /** Report target execution mode: GPU or JTP (Java Thread Pool). **/
-      System.out.println("Execution mode=" + kernel.getExecutionMode());
+      System.out.println("Execution mode=" + kernelRunner.getExecutionMode());
 
       /** Window listener to dispose Kernel resources on user exit. **/
       frame.addWindowListener(new WindowAdapter(){
          public void windowClosing(WindowEvent _windowEvent) {
-            kernel.dispose();
+            kernelRunner.dispose();
             System.exit(0);
          }
       });
@@ -271,7 +273,7 @@ public class Main{
          trailLastUpdatedPosition++;
 
          /** execute the kernel which calculates new pixel values **/
-         kernel.execute(range);
+         kernelRunner.execute(kernel, range);
 
          /** copy the rgb values to the imageRgb buffer **/
          System.arraycopy(rgb, 0, imageRgb, 0, rgb.length);

@@ -69,6 +69,7 @@ import com.amd.aparapi.Kernel;
 import com.amd.aparapi.ProfileInfo;
 import com.amd.aparapi.Range;
 
+import com.amd.aparapi.internal.kernel.KernelRunner;
 import com.jogamp.opengl.util.FPSAnimator;
 import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.TextureIO;
@@ -78,10 +79,10 @@ import com.jogamp.opengl.util.texture.TextureIO;
  * 
  * For a description of the NBody problem.
  * 
- * @see http://en.wikipedia.org/wiki/N-body_problem
+ * @see <a href="http://en.wikipedia.org/wiki/N-body_problem">http://en.wikipedia.org/wiki/N-body_problem</a>
  * 
  *      We use JOGL to render the bodies.
- * @see http://jogamp.org/jogl/www/
+ * @see <a href="http://jogamp.org/jogl/www/">http://jogamp.org/jogl/www/</a>
  * 
  * @author gfrost
  * 
@@ -103,7 +104,7 @@ public class Main{
       /**
        * Constructor initializes xyz and vxyz arrays.
        * 
-       * @param _bodies
+       * @param _range
        */
       public NBodyKernel(Range _range) {
          range = _range;
@@ -214,6 +215,8 @@ public class Main{
    public static Texture texture = null;
 
    public static void main(String _args[]) {
+      final KernelRunner kernelRunner = new KernelRunner();
+
       final int bodyCount = Integer.getInteger("bodies", 8192);
 
       //final Main kernel = new Main(bodyCount);
@@ -283,7 +286,7 @@ public class Main{
          private long last = System.currentTimeMillis();
 
          @Override public void dispose(GLAutoDrawable drawable) {
-
+            kernelRunner.dispose();
          }
 
          @Override public void display(GLAutoDrawable drawable) {
@@ -301,7 +304,7 @@ public class Main{
             glu.gluLookAt(xeye, yeye, zeye * zoomFactor, xat, yat, zat, 0f, 1f, 0f);
             if (running) {
                //Arrays.parallel(bodies.toArray(new Body[1])).forEach(b -> {b.nextMove();});
-               kernel.execute(kernel.range);
+               kernelRunner.execute(kernel, kernel.range);
 
             }
             kernel.render(gl);

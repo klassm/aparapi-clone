@@ -66,6 +66,7 @@ import javax.swing.WindowConstants;
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.ProfileInfo;
 import com.amd.aparapi.Range;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 import com.jogamp.opengl.util.FPSAnimator;
 import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.TextureData;
@@ -76,10 +77,10 @@ import com.jogamp.opengl.util.texture.TextureIO;
  * 
  * For a description of the NBody problem.
  * 
- * @see http://en.wikipedia.org/wiki/N-body_problem
+ * @see <a href="http://en.wikipedia.org/wiki/N-body_problem">http://en.wikipedia.org/wiki/N-body_problem</a>
  * 
  *      We use JOGL to render the bodies.
- * @see http://jogamp.org/jogl/www/
+ * @see <a href="http://jogamp.org/jogl/www/">http://jogamp.org/jogl/www/</a>
  * 
  * @author gfrost
  * 
@@ -102,9 +103,10 @@ public class Main{
       /**
        * Constructor initializes xyz and vxyz arrays.
        * 
-       * @param _bodies
+       * @param _range
+       * @param kernelRunner
        */
-      public NBodyKernel(Range _range) {
+      public NBodyKernel(Range _range, KernelRunner kernelRunner) {
          range = _range;
          // range = Range.create(bodies);
          xyz = new float[range.getGlobalSize(0) * 3];
@@ -129,7 +131,7 @@ public class Main{
                xyz[body + 0] -= maxDist * 1.5;
             }
          }
-         setExplicit(true);
+         kernelRunner.setExplicit(true);
       }
 
       /**
@@ -202,10 +204,11 @@ public class Main{
    static Texture texture;
 
    public static void main(String _args[]) {
+      final KernelRunner kernelRunner = new KernelRunner();
 
       //System.load("/Library/Java/JavaVirtualMachines/jdk1.7.0_09.jdk/Contents/Home/jre/lib/libawt.dylib");
       //System.load("/Library/Java/JavaVirtualMachines/jdk1.7.0_09.jdk/Contents/Home/jre/lib/libjawt.dylib");
-      final NBodyKernel kernel = new NBodyKernel(Range.create(Integer.getInteger("bodies", 8192)));
+      final NBodyKernel kernel = new NBodyKernel(Range.create(Integer.getInteger("bodies", 8192)), kernelRunner);
 
       final JFrame frame = new JFrame("NBody");
 
@@ -222,7 +225,7 @@ public class Main{
          }
       });
       controlPanel.add(startButton);
-      controlPanel.add(new JLabel(kernel.getExecutionMode().toString()));
+      controlPanel.add(new JLabel(kernelRunner.getExecutionMode().toString()));
 
       controlPanel.add(new JLabel("   Particles"));
       controlPanel.add(new JTextField("" + kernel.range.getGlobalSize(0), 5));
@@ -289,11 +292,11 @@ public class Main{
 
             glu.gluLookAt(xeye, yeye, zeye * zoomFactor, xat, yat, zat, 0f, 1f, 0f);
             if (running) {
-               kernel.execute(kernel.range);
-               if (kernel.isExplicit()) {
-                  kernel.get(kernel.xyz);
+               kernelRunner.execute(kernel, kernel.range);
+               if (kernelRunner.isExplicit()) {
+                  kernelRunner.get(kernel.xyz);
                }
-               final List<ProfileInfo> profileInfo = kernel.getProfileInfo();
+               final List<ProfileInfo> profileInfo = kernelRunner.getProfileInfo(kernel);
                if ((profileInfo != null) && (profileInfo.size() > 0)) {
                   for (final ProfileInfo p : profileInfo) {
                      System.out.print(" " + p.getType() + " " + p.getLabel() + ((p.getEnd() - p.getStart()) / 1000) + "us");

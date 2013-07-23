@@ -43,6 +43,7 @@ import java.awt.image.DataBufferByte;
 
 import com.amd.aparapi.Kernel;
 import com.amd.aparapi.Range;
+import com.amd.aparapi.internal.kernel.KernelRunner;
 
 public class ReferenceSolution{
 
@@ -60,13 +61,13 @@ public class ReferenceSolution{
 
       float[] convMatrix3x3;
 
-      public Convolution(BufferedImage _imageIn, BufferedImage _imageOut) {
+      public Convolution(BufferedImage _imageIn, BufferedImage _imageOut, KernelRunner kernelRunner) {
          inputData = ((DataBufferByte) _imageIn.getRaster().getDataBuffer()).getData();
          outputData = ((DataBufferByte) _imageOut.getRaster().getDataBuffer()).getData();
          width = _imageIn.getWidth();
          height = _imageIn.getHeight();
          range = Range.create2D(width * 3, height);
-         setExplicit(true);
+         kernelRunner.setExplicit(true);
 
       }
 
@@ -94,7 +95,7 @@ public class ReferenceSolution{
          }
       }
 
-      public void apply(float[] _convMatrix3x3) {
+      public void apply(float[] _convMatrix3x3, KernelRunner kernelRunner) {
          convMatrix3x3 = _convMatrix3x3;
          for (int x = 0; x < width * 3; x++) {
             for (int y = 0; y < height; y++) {
@@ -108,6 +109,8 @@ public class ReferenceSolution{
    }
 
    public static void main(final String[] _args) {
+      final KernelRunner kernelRunner = new KernelRunner();
+
       String fileName = _args.length == 1 ? _args[0] : "Leo720p.wmv";
 
       float[] convMatrix3x3 = new float[] {
@@ -126,9 +129,9 @@ public class ReferenceSolution{
 
          @Override protected void processFrame(Graphics2D gc, float[] _convMatrix3x3, BufferedImage in, BufferedImage out) {
             if (kernel == null) {
-               kernel = new Convolution(in, out);
+               kernel = new Convolution(in, out, kernelRunner);
             }
-            kernel.apply(_convMatrix3x3);
+            kernel.apply(_convMatrix3x3, kernelRunner);
          }
       };
 

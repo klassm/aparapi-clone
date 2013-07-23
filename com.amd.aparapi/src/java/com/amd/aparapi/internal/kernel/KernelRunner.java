@@ -1327,6 +1327,10 @@ public class KernelRunner extends KernelRunnerJNI {
       return getProfileInfo(kernel.getClass());
    }
 
+   public boolean hasProfileInfo(Class<? extends Kernel> kernelClass) {
+      return kernelMappingMap.containsKey(kernelClass);
+   }
+
    public List<ProfileInfo> getProfileInfo(Class<? extends Kernel> kernelClass) {
       KernelMapping kernelMapping = kernelMappingMap.get(kernelClass);
       if (kernelMapping == null) {
