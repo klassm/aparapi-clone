@@ -53,6 +53,10 @@ void JNIContext::dispose(JNIEnv *jenv, Config* config) {
          if (arg->javaArg != NULL ) {
             jenv->DeleteGlobalRef((jobject) arg->javaArg);
          }
+         arg->arrayBuffer = NULL;
+         arg->aparapiBuffer = NULL;
+         arg->argObj = NULL;
+         
          delete arg; arg=args[i]=NULL;
       }
       delete[] args; args=NULL;
