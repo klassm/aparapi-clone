@@ -901,11 +901,7 @@ public class KernelRunner extends KernelRunnerJNI {
    }
 
    public synchronized KernelRunner execute(Kernel kernel, int globalSize, int passes) {
-      Device device = lastGPUExecutionDevice;
-      if (lastGPUExecutionDevice == null) {
-         device = Device.best();
-      }
-      return execute(kernel, Range.create(device, globalSize), passes);
+      return execute(kernel, Range.create(Device.best(), globalSize), passes);
    }
 
    public synchronized KernelRunner execute(Kernel kernel, final Range _range, final int _passes) {

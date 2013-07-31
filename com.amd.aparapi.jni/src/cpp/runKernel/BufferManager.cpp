@@ -61,15 +61,18 @@ void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv) {
 
 void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
    if (! enforce && ! createdNewAparapiBuffer && ! replacedArrayBuffer) return;
-
+   
    std::list<AparapiBuffer*> aparapiBufferCopy(aparapiBufferList.begin(), aparapiBufferList.end());
    std::list<ArrayBuffer*> arrayBufferCopy(arrayBufferList.begin(), arrayBufferList.end());
-
+  
    for (std::list<JNIContext*>::iterator it = this->jniContextList.begin(); it != this->jniContextList.end(); it++) {
-      for (int i = 0; i < (*it)->argc; i++) {
-         KernelArg* arg = (*it)->args[i];
+      JNIContext *context = *it;
+      if (context == NULL || context->argc == 0 || context->args == NULL) continue;
+      for (int i = 0; i < context->argc; i++) {
+         
+         KernelArg* arg = context->args[i];
          if (arg == NULL) continue;
-
+         
          if ((enforce ||createdNewAparapiBuffer) && arg->isAparapiBuffer()) {
             for (std::list<AparapiBuffer*>::iterator bufferIt = aparapiBufferCopy.begin(); bufferIt != aparapiBufferCopy.end(); bufferIt++) {
                AparapiBuffer *savedBuffer = *bufferIt;
@@ -92,7 +95,7 @@ void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
    }
 
    // by now both copy arrays will contain only unreferenced addresses
-
+   
    if (enforce || createdNewAparapiBuffer) {
       for (std::list<AparapiBuffer*>::iterator bufferIt = aparapiBufferCopy.begin(); bufferIt != aparapiBufferCopy.end(); bufferIt++) {
          for (std::list<AparapiBuffer*>::iterator it = aparapiBufferList.begin(); it != aparapiBufferList.end(); it++) {
@@ -118,7 +121,7 @@ void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
          }
       }
    }
-
+   
    createdNewAparapiBuffer = false;
    replacedArrayBuffer = false;
 }
