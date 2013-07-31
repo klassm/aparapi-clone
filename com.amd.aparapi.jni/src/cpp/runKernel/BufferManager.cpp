@@ -4,7 +4,7 @@
 
 BufferManager::BufferManager() {
    this->createdNewAparapiBuffer = false;
-   this->createdNewArrayBuffer = false;
+   this->replacedArrayBuffer = false;
 }
 
 ArrayBuffer* BufferManager::getArrayBufferFor(JNIEnv *jenv, jobject reference) {
@@ -13,11 +13,8 @@ ArrayBuffer* BufferManager::getArrayBufferFor(JNIEnv *jenv, jobject reference) {
       result = new ArrayBuffer(jenv, reference);
       std::list<ArrayBuffer*>::iterator it = arrayBufferList.begin();
       arrayBufferList.insert(it, result);
-
-      createdNewArrayBuffer = true;
    }
    return result;
-   return NULL;
 }
 
 AparapiBuffer* BufferManager::getAparapiBufferFor(JNIEnv *jenv, jobject reference, jint type) {
@@ -27,10 +24,9 @@ AparapiBuffer* BufferManager::getAparapiBufferFor(JNIEnv *jenv, jobject referenc
       std::list<AparapiBuffer*>::iterator it = aparapiBufferList.begin();
       aparapiBufferList.insert(it, result);
 
-      createdNewArrayBuffer = true;
+      createdNewAparapiBuffer = true;
    }
    return result;
-   return NULL;
 }
 
 AparapiBuffer* BufferManager::findAparapiBufferForReference(JNIEnv *jenv, jobject reference) {
@@ -63,7 +59,7 @@ void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv) {
 }
 
 void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
-   if (! enforce && ! createdNewAparapiBuffer && ! createdNewArrayBuffer) return;
+   if (! enforce && ! createdNewAparapiBuffer && ! replacedArrayBuffer) return;
 
    std::list<AparapiBuffer*> aparapiBufferCopy(aparapiBufferList.begin(), aparapiBufferList.end());
    std::list<ArrayBuffer*> arrayBufferCopy(arrayBufferList.begin(), arrayBufferList.end());
@@ -81,7 +77,7 @@ void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
                }
             }
          }
-         if (createdNewArrayBuffer && arg->isArray()) {
+         if (replacedArrayBuffer && arg->isArray()) {
             for (std::list<ArrayBuffer*>::iterator bufferIt = arrayBufferCopy.begin(); bufferIt != arrayBufferCopy.end(); bufferIt++) {
                ArrayBuffer *savedBuffer = *bufferIt;
                if (savedBuffer == arg->arrayBuffer) {
@@ -108,7 +104,7 @@ void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
       }
    }
 
-   if (createdNewArrayBuffer) {
+   if (replacedArrayBuffer) {
       for (std::list<ArrayBuffer*>::iterator bufferIt = arrayBufferCopy.begin(); bufferIt != arrayBufferCopy.end(); bufferIt++) {
          for (std::list<ArrayBuffer*>::iterator it = arrayBufferList.begin(); it != arrayBufferList.end(); it++) {
             if (&*bufferIt == &* it) {
@@ -122,7 +118,7 @@ void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
    }
 
    createdNewAparapiBuffer = false;
-   createdNewArrayBuffer = false;
+   replacedArrayBuffer = false;
 }
 
 void BufferManager::cleanUp(GPUElement* gpuElement, JNIEnv *jenv) {

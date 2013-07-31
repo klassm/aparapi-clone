@@ -94,7 +94,7 @@ void dispose(JNIEnv* jenv) {
       commandQueue = (cl_command_queue) NULL;
    }
 
-   BufferManager::getInstance()->cleanUpNonReferencedBuffers(jenv);
+   BufferManager::getInstance()->cleanUpNonReferencedBuffers(jenv, true);
 
    if (config->isTrackingOpenCLResources()){
       fprintf(stderr, "after dispose{ \n");

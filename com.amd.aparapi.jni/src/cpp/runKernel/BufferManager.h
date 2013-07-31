@@ -12,6 +12,10 @@
  */
 class BufferManager {
    public:
+      
+      bool replacedArrayBuffer;
+      bool createdNewAparapiBuffer;
+
       /**
        * Return an Instance of BufferManager.
        * @return instance
@@ -49,9 +53,6 @@ class BufferManager {
       std::list<AparapiBuffer*> aparapiBufferList;
       std::list<ArrayBuffer*> arrayBufferList;
 	   void cleanUp(GPUElement* gpuElement, JNIEnv *jenv);
-
-      bool createdNewArrayBuffer;
-      bool createdNewAparapiBuffer;
 
       AparapiBuffer* findAparapiBufferForReference(JNIEnv *jenv, jobject argObj);
       ArrayBuffer* findArrayBufferForReference(JNIEnv *jenv, jobject argObj);

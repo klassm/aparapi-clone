@@ -170,6 +170,7 @@ void KernelArg::updateReference(JNIEnv *jenv) {
          doUpdate = true;
       } else if (!jenv->IsSameObject(newRef, this->arrayBuffer->javaObject)) {
          doUpdate = true;
+         BufferManager::getInstance()->replacedArrayBuffer = true;
       }
 
       if (doUpdate) {
@@ -182,7 +183,6 @@ void KernelArg::updateReference(JNIEnv *jenv) {
       //int numDims = JNIHelper::getInstanceField<jint>(jenv, javaArg, "numDims", IntArg);
       this->aparapiBuffer = BufferManager::getInstance()->getAparapiBufferFor(jenv, javaArg, type);
    }
-
 }
 
 

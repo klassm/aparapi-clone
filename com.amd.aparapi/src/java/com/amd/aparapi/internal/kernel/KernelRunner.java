@@ -800,6 +800,10 @@ public class KernelRunner extends KernelRunnerJNI {
       return needsSync;
    }
 
+   private <T> int deepHashCodeFor(T[] array) {
+      return Arrays.deepHashCode(array);
+   }
+
    // private int numAvailableProcessors = Runtime.getRuntime().availableProcessors();
 
    private KernelRunner executeOpenCL(final Kernel kernel, KernelMapping kernelMapping,
