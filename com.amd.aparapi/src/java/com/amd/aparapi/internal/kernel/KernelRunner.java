@@ -37,19 +37,6 @@ under those regulations, please refer to the U.S. Bureau of Industry and Securit
 */
 package com.amd.aparapi.internal.kernel;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.*;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import com.amd.aparapi.*;
 import com.amd.aparapi.Kernel.KernelState;
 import com.amd.aparapi.annotation.Constant;
@@ -65,6 +52,19 @@ import com.amd.aparapi.internal.model.Entrypoint;
 import com.amd.aparapi.internal.util.UnsafeWrapper;
 import com.amd.aparapi.internal.writer.KernelWriter;
 import com.amd.aparapi.opencl.OpenCL;
+
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.*;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * The class is responsible for executing <code>Kernel</code> implementations. <br/>
@@ -799,12 +799,6 @@ public class KernelRunner extends KernelRunnerJNI {
       }
       return needsSync;
    }
-
-   private <T> int deepHashCodeFor(T[] array) {
-      return Arrays.deepHashCode(array);
-   }
-
-   // private int numAvailableProcessors = Runtime.getRuntime().availableProcessors();
 
    private KernelRunner executeOpenCL(final Kernel kernel, KernelMapping kernelMapping,
                                       final Range _range, final int _passes) throws AparapiException {

@@ -67,7 +67,8 @@ void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
    for (std::list<JNIContext*>::iterator it = this->jniContextList.begin(); it != this->jniContextList.end(); it++) {
       for (int i = 0; i < (*it)->argc; i++) {
          KernelArg* arg = (*it)->args[i];
-         
+         if (arg == NULL) continue;
+
          if (createdNewAparapiBuffer && arg->isAparapiBuffer()) {
             for (std::list<AparapiBuffer*>::iterator bufferIt = aparapiBufferCopy.begin(); bufferIt != aparapiBufferCopy.end(); bufferIt++) {
                AparapiBuffer *savedBuffer = *bufferIt;
@@ -96,8 +97,8 @@ void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
          for (std::list<AparapiBuffer*>::iterator it = aparapiBufferList.begin(); it != aparapiBufferList.end(); it++) {
             if (&*bufferIt == &* it) {
                aparapiBufferList.erase(it);
-			   GPUElement* element = (GPUElement*) &*it;
-			   cleanUp(element, jenv);
+			      GPUElement* element = (GPUElement*) &*it;
+			      cleanUp(element, jenv);
                break;
             }
          }
@@ -121,10 +122,22 @@ void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
    replacedArrayBuffer = false;
 }
 
+void BufferManager::dispose(JNIEnv *jenv) {
+   for (std::list<AparapiBuffer*>::iterator it = aparapiBufferList.begin(); it != aparapiBufferList.end(); it++) {
+		GPUElement* element = (GPUElement*) &*it;
+		cleanUp(element, jenv);
+   }
+   for (std::list<ArrayBuffer*>::iterator it = arrayBufferList.begin(); it != arrayBufferList.end(); it++) {
+      GPUElement* element = (GPUElement*) &*it;
+		cleanUp(element, jenv);
+   }
+}
+
 void BufferManager::cleanUp(GPUElement* gpuElement, JNIEnv *jenv) {
 	cl_int status = CL_SUCCESS;
 
 	if (gpuElement->javaObject != NULL) {
+      
       jenv->DeleteGlobalRef(gpuElement->javaObject);
 		if (config->isVerbose()){
 			fprintf(stderr, "DeleteGlobalRef for %p\n", gpuElement->javaObject);         

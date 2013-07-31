@@ -42,6 +42,10 @@ void JNIContext::dispose(JNIEnv *jenv, Config* config) {
    if (argc > 0){
       for (int i=0; i< argc; i++){
          KernelArg *arg = args[i];
+         if (arg->javaArg != NULL ) {
+            jenv->DeleteGlobalRef((jobject) arg->javaArg);
+            arg->javaArg = NULL;
+         }
          if (!arg->isPrimitive()){
             // those will be cleaned up by BufferManager!
             arg->arrayBuffer = NULL;
@@ -50,9 +54,7 @@ void JNIContext::dispose(JNIEnv *jenv, Config* config) {
          if (arg->name != NULL){
             free(arg->name); arg->name = NULL;
          }
-         if (arg->javaArg != NULL ) {
-            jenv->DeleteGlobalRef((jobject) arg->javaArg);
-         }
+
          arg->arrayBuffer = NULL;
          arg->aparapiBuffer = NULL;
          arg->argObj = NULL;

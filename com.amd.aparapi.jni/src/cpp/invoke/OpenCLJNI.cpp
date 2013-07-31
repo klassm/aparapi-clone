@@ -297,7 +297,7 @@ JNI_JAVA(void, OpenCLJNI, disposeKernel)
          jobject argDef = jenv->GetObjectArrayElement(argDefsArray, argIndex);
          jlong argBits = OpenCLArgDescriptor::getBits(jenv, argDef);
          if (argisset(argBits, ARRAY) && argisset(argBits, GLOBAL)){
-            jobject memInstance = OpenCLArgDescriptor::getMemInstance(jenv, argDef);
+           jobject memInstance = OpenCLArgDescriptor::getMemInstance(jenv, argDef);
             if (memInstance == NULL){
                fprintf(stderr, "mem instance not set\n");
             }else{

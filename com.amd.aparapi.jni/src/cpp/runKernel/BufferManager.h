@@ -44,6 +44,7 @@ class BufferManager {
        * @return buffer
        */
       AparapiBuffer* getAparapiBufferFor(JNIEnv *jenv, jobject argObj, jint type);
+      void dispose(JNIEnv *jenv);
       void cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce);
       void cleanUpNonReferencedBuffers(JNIEnv *jenv);
 
