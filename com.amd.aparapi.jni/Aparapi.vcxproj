@@ -102,6 +102,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(VISUAL_STUDIO_DIR)\VC\include;$(JAVA_HOME)\include;$(JAVA_HOME)\include\win32;include;$(AMDAPPSDKROOT)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <SuppressStartupBanner>false</SuppressStartupBanner>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

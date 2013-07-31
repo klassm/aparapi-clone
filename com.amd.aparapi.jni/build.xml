@@ -685,11 +685,12 @@ First consider editing the properties in build.properties
       <echo message="msvc ${os.arch}" />
       <exec executable="${msvc.dir}\vc\bin\${optional.amd64.subdir}cl.exe">
          <env key="PATH" path="${env.PATH};${msvc.dir}\\Common7\\IDE" />
-         <arg value="/nologo" />
+         <!--<arg value="/nologo" />-->
          <arg value="/TP" />
-         <arg value="/Ox" />
+         <!--<arg value="/Ox" />-->
+		 <arg value="/Od" />
          <!-- <arg value="/openmp" /> -->
-         <arg value="-DCL_USE_DEPRECATED_OPENCL_1_1_APIS"/>
+         <!--<arg value="-DCL_USE_DEPRECATED_OPENCL_1_1_APIS"/>-->
          <arg value="/EHsc" />
          <arg value="/I${msvc.dir}\vc\include" />
          <arg value="/I${msvc.sdk.dir}\include" />

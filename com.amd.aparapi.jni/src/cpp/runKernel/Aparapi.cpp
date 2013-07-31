@@ -70,6 +70,8 @@ void initialize(JNIEnv* jenv) {
 
 void dispose(JNIEnv* jenv) {
    cl_int status = CL_SUCCESS;
+
+
    if (context != 0){
       status = clReleaseContext(context);
       //fprintf(stdout, "dispose context %0lx\n", context);
@@ -93,6 +95,8 @@ void dispose(JNIEnv* jenv) {
       CLException::checkCLError(status, "clReleaseCommandQueue()");
       commandQueue = (cl_command_queue) NULL;
    }
+
+   BufferManager::getInstance()->cleanUpNonReferencedBuffers(jenv, true);
 
    if (config->isTrackingOpenCLResources()){
       fprintf(stderr, "after dispose{ \n");
