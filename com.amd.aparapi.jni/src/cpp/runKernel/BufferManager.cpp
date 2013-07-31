@@ -1,7 +1,6 @@
 #include "BufferManager.h"
 #include "JNIContext.h"
 #include "List.h"
-#include "common.h"
 
 BufferManager::BufferManager() {
    this->createdNewAparapiBuffer = false;
