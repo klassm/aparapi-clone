@@ -149,7 +149,7 @@ cl_int KernelArg::setPrimitiveArg(JNIEnv *jenv, int argIdx, int argPos, bool ver
    return status;
 }
 
-void KernelArg::updateReference(JNIEnv *jenv) {
+void KernelArg::updateReference(JNIEnv *jenv, BufferManager* bufferManager) {
    this->syncType(jenv);
 
    if (config->isVerbose()){
@@ -170,18 +170,17 @@ void KernelArg::updateReference(JNIEnv *jenv) {
          doUpdate = true;
       } else if (!jenv->IsSameObject(newRef, this->arrayBuffer->javaObject)) {
          doUpdate = true;
-         BufferManager::getInstance()->replacedArrayBuffer = true;
+         bufferManager->replacedArrayBuffer = true;
       }
 
       if (doUpdate) {
-         this->arrayBuffer = BufferManager::getInstance()->getArrayBufferFor(jenv, newRef);
+         this->arrayBuffer = bufferManager->getArrayBufferFor(jenv, newRef);
 
          this->syncJavaArrayLength(jenv);
          this->syncSizeInBytes(jenv);
       }
    } else if (this->isAparapiBuffer()) {
-      //int numDims = JNIHelper::getInstanceField<jint>(jenv, javaArg, "numDims", IntArg);
-      this->aparapiBuffer = BufferManager::getInstance()->getAparapiBufferFor(jenv, javaArg, type);
+      this->aparapiBuffer = bufferManager->getAparapiBufferFor(jenv, javaArg, type);
    }
 }
 

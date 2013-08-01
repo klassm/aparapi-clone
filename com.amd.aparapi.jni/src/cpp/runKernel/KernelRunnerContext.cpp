@@ -1,5 +1,6 @@
 #include "KernelRunnerContext.h"
 #include "OpenCLJNI.h"
+#include "List.h"
 
 
 KernelRunnerContext::KernelRunnerContext(cl_device_id _deviceId, cl_device_type _deviceType, 
@@ -10,11 +11,50 @@ KernelRunnerContext::KernelRunnerContext(cl_device_id _deviceId, cl_device_type 
       commandQueue(_commandQueue),
       flags(_flags)
 {
+   bufferManager = new BufferManager();
 }
 
 
-KernelRunnerContext::~KernelRunnerContext(void)
-{
+KernelRunnerContext::~KernelRunnerContext(void) {
+}
+
+void KernelRunnerContext::dispose(JNIEnv* jenv) {
+   for (std::list<KernelContext*>::iterator it = kernelContextList.begin(); it != kernelContextList.end(); it++) {
+      (*it)->dispose(jenv, config);
+      delete (*it);
+   }
+   kernelContextList.clear();
+
+   cl_int status = CL_SUCCESS;
+
+   if (context != 0){
+      status = clReleaseContext(context);
+      //fprintf(stdout, "dispose context %0lx\n", context);
+      CLException::checkCLError(status, "clReleaseContext()");
+      context = (cl_context)0;
+   }
+
+   if (commandQueue != NULL){
+      if (config->isTrackingOpenCLResources()){
+         commandQueueList.remove((cl_command_queue)commandQueue, __LINE__, __FILE__);
+      }
+      status = clReleaseCommandQueue((cl_command_queue)commandQueue);
+      //fprintf(stdout, "dispose commandQueue %0lx\n", commandQueue);
+      CLException::checkCLError(status, "clReleaseCommandQueue()");
+      commandQueue = (cl_command_queue) NULL;
+   }
+
+   bufferManager->cleanUpNonReferencedBuffers(jenv, kernelContextList, true);
+
+   if (config->isTrackingOpenCLResources()){
+      fprintf(stderr, "after dispose{ \n");
+      commandQueueList.report(stderr);
+      memList.report(stderr); 
+      readEventList.report(stderr); 
+      executeEventList.report(stderr); 
+      writeEventList.report(stderr); 
+      fprintf(stderr, "}\n");
+   }
 }
 
 /**
@@ -61,4 +101,9 @@ KernelRunnerContext* KernelRunnerContext::contextFor(JNIEnv* jenv, jobject _open
    if(status != CL_SUCCESS) throw CLException(status,"clCreateCommandQueue()");
 
    return new KernelRunnerContext(deviceId, deviceType, context, commandQueue, flags);
+}
+
+void KernelRunnerContext::registerKernelContext(KernelContext* kernelContext) {
+   std::list<KernelContext*>::iterator it = kernelContextList.begin();
+   kernelContextList.insert(it, kernelContext);
 }

@@ -342,7 +342,8 @@ public abstract class KernelRunnerJNI {
    protected native long buildProgramJNI(long _kernelRunnerHandle, long _kernelHandle, String _source);
 
    /**
-    * Set the given array of {@link KernelArgJNI} objects on the kernel specified by _kernelHandle.
+    * Set the given array of {@link KernelArgJNI} objects on the kernel specified by _kernelHandle. The method
+    * must be called once, when the argument list of the kernel was determined the first time.
     *
     * @param _kernelRunnerHandle relates to the runner context on JNI side
     * @param _kernelHandle relates to the kernel context on JNI side

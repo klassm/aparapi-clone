@@ -45,55 +45,35 @@
 #include "Range.h"
 #include "KernelArg.h"
 #include "KernelContext.h"
+#include "KernelRunnerContext.h"
 
-//compiler dependant code
-int enqueueMarker(cl_command_queue commandQueue, cl_event* firstEvent);
+void initialize(JNIEnv* jenv);
+
+// called by buildProgramJNI
+void writeProfile(JNIEnv* jenv, KernelContext* kernelContext);
 jint getProcess();
 
-/*
-void idump(const char *str, void *ptr, int size);
+// called by runKernelJNI
+void profileFirstRun(KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext);
+int enqueueMarker(cl_command_queue commandQueue, cl_event* firstEvent);
+jint updateNonPrimitiveReferences(JNIEnv *jenv, jobject jobj, KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext);
+int processArgs(JNIEnv* jenv, KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext, int& argPos, int& writeEventCount);
+void updateWriteEvents(JNIEnv* jenv, KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext, KernelArg* arg, int argIdx, int& writeEventCount);
 
-void fdump(const char *str, void *ptr, int size);
-*/
-
-jint writeProfileInfo(KernelContext* kernelContext);
-
-cl_int profile(ProfileInfo *profileInfo, cl_event *event, jint type, char* name, cl_ulong profileBaseTime);
-
-jint updateNonPrimitiveReferences(JNIEnv *jenv, jobject jobj, KernelContext* kernelContext);
-
-void profileFirstRun(KernelContext* kernelContext);
-
-void updateArray(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
-void updateBuffer(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
-
-void processObject(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
-void processArray(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
-void processBuffer(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
-
-void updateWriteEvents(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int argIdx, int& writeEventCount);
-
+void processObject(JNIEnv* jenv, KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
 void processLocal(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
 void processLocalArray(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
 void processLocalBuffer(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
 
-int processArgs(JNIEnv* jenv, KernelContext* kernelContext, int& argPos, int& writeEventCount);
+void enqueueKernel(KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext, Range& range, int passes, int argPos, int writeEventCount);
 
-void enqueueKernel(KernelContext* kernelContext, Range& range, int passes, int argPos, int writeEventCount);
-
-int getReadEvents(KernelContext* kernelContext);
-
+cl_int profile(ProfileInfo *profileInfo, cl_event *event, jint type, char* name, cl_ulong profileBaseTime);
+int getReadEvents(JNIEnv* jenv, KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext);
 void waitForReadEvents(KernelContext* kernelContext, int readEventCount, int passes);
-
 void checkEvents(JNIEnv* jenv, KernelContext* kernelContext, int writeEventCount);
+jint writeProfileInfo(KernelContext* kernelContext);
 
-void writeProfile(JNIEnv* jenv, KernelContext* kernelContext);
-
+// getJNI
 KernelArg* getArgForBuffer(JNIEnv* jenv, KernelContext* kernelContext, jobject buffer);
-
-void initialize(JNIEnv* jenv);
-void initialize(JNIEnv* jenv, jobject openCLDeviceObject);
-void dispose(JNIEnv* jenv);
-
 
 #endif // APARAPI_H

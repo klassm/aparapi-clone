@@ -84,7 +84,7 @@ class KernelArg{
        * if this has not been done before or allocating a new one as the array reference has changed.
        * @param jenv JNI reference
        */
-      void updateReference(JNIEnv *jenv);
+      void updateReference(JNIEnv *jenv, BufferManager* bufferManager);
 
       void unpinAbort(JNIEnv *jenv){
          arrayBuffer->unpinAbort(jenv);

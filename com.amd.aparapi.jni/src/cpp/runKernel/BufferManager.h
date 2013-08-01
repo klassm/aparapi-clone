@@ -12,20 +12,10 @@
  */
 class BufferManager {
    public:
-      
+      BufferManager();
+
       bool replacedArrayBuffer;
       bool createdNewAparapiBuffer;
-
-      /**
-       * Return an Instance of BufferManager.
-       * @return instance
-       */
-      static BufferManager *getInstance();
-
-      /**
-       * Holds a list of jni contexts, representing kernel entry points.
-       */
-      std::list<KernelContext*> kernelContextList;
 
       /**
        * Get an ArrayBuffer for a matching argObj. If no buffer containing the argObj is found, 
@@ -44,12 +34,10 @@ class BufferManager {
        * @return buffer
        */
       AparapiBuffer* getAparapiBufferFor(JNIEnv *jenv, jobject argObj, jint type);
-      void cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce);
-      void cleanUpNonReferencedBuffers(JNIEnv *jenv);
+      void cleanUpNonReferencedBuffers(JNIEnv *jenv, std::list<KernelContext*> kernelContextList, bool enforce);
+      void cleanUpNonReferencedBuffers(JNIEnv *jenv, std::list<KernelContext*> kernelContextList);
 
-   private:
-      BufferManager();
-      
+   private:    
       std::list<AparapiBuffer*> aparapiBufferList;
       std::list<ArrayBuffer*> arrayBufferList;
 	   void cleanUp(GPUElement* gpuElement, JNIEnv *jenv);

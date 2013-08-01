@@ -10,11 +10,6 @@ KernelContext::KernelContext(JNIEnv *jenv, jobject _kernelObject):
       passes(0),
       exec(NULL),
       profileFile(NULL) {
-
-   BufferManager* bufferManager = BufferManager::getInstance();
-   
-   std::list<KernelContext*>::iterator it = bufferManager->kernelContextList.begin();
-   bufferManager->kernelContextList.insert(it, this);
 }
 
 void KernelContext::dispose(JNIEnv *jenv, Config* config) {

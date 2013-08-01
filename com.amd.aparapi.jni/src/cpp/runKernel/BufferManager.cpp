@@ -50,22 +50,17 @@ ArrayBuffer* BufferManager::findArrayBufferForReference(JNIEnv *jenv, jobject re
    return NULL;
 }
 
-BufferManager* BufferManager::getInstance() {
-   static BufferManager theInstance;
-   return &theInstance;
+void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, std::list<KernelContext*> kernelContextList) {
+   this->cleanUpNonReferencedBuffers(jenv, kernelContextList, false);
 }
 
-void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv) {
-   this->cleanUpNonReferencedBuffers(jenv, false);
-}
-
-void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
+void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, std::list<KernelContext*> kernelContextList, bool enforce) {
    if (! enforce && ! createdNewAparapiBuffer && ! replacedArrayBuffer) return;
    
    std::list<AparapiBuffer*> aparapiBufferCopy(aparapiBufferList.begin(), aparapiBufferList.end());
    std::list<ArrayBuffer*> arrayBufferCopy(arrayBufferList.begin(), arrayBufferList.end());
   
-   for (std::list<KernelContext*>::iterator it = this->kernelContextList.begin(); it != this->kernelContextList.end(); it++) {
+   for (std::list<KernelContext*>::iterator it = kernelContextList.begin(); it != kernelContextList.end(); it++) {
       KernelContext *context = *it;
       if (context == NULL || context->argc == 0 || context->args == NULL) continue;
       for (int i = 0; i < context->argc; i++) {
