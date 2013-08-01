@@ -1,5 +1,5 @@
 #include "BufferManager.h"
-#include "JNIContext.h"
+#include "KernelContext.h"
 #include "List.h"
 #include "common.h"
 
@@ -65,8 +65,8 @@ void BufferManager::cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce) {
    std::list<AparapiBuffer*> aparapiBufferCopy(aparapiBufferList.begin(), aparapiBufferList.end());
    std::list<ArrayBuffer*> arrayBufferCopy(arrayBufferList.begin(), arrayBufferList.end());
   
-   for (std::list<JNIContext*>::iterator it = this->jniContextList.begin(); it != this->jniContextList.end(); it++) {
-      JNIContext *context = *it;
+   for (std::list<KernelContext*>::iterator it = this->kernelContextList.begin(); it != this->kernelContextList.end(); it++) {
+      KernelContext *context = *it;
       if (context == NULL || context->argc == 0 || context->args == NULL) continue;
       for (int i = 0; i < context->argc; i++) {
          

@@ -44,7 +44,7 @@
 #include "CLException.h"
 #include "Range.h"
 #include "KernelArg.h"
-#include "JNIContext.h"
+#include "KernelContext.h"
 
 //compiler dependant code
 int enqueueMarker(cl_command_queue commandQueue, cl_event* firstEvent);
@@ -56,40 +56,40 @@ void idump(const char *str, void *ptr, int size);
 void fdump(const char *str, void *ptr, int size);
 */
 
-jint writeProfileInfo(JNIContext* jniContext);
+jint writeProfileInfo(KernelContext* kernelContext);
 
 cl_int profile(ProfileInfo *profileInfo, cl_event *event, jint type, char* name, cl_ulong profileBaseTime);
 
-jint updateNonPrimitiveReferences(JNIEnv *jenv, jobject jobj, JNIContext* jniContext);
+jint updateNonPrimitiveReferences(JNIEnv *jenv, jobject jobj, KernelContext* kernelContext);
 
-void profileFirstRun(JNIContext* jniContext);
+void profileFirstRun(KernelContext* kernelContext);
 
-void updateArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-void updateBuffer(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
+void updateArray(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
+void updateBuffer(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
 
-void processObject(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-void processArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-void processBuffer(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
+void processObject(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
+void processArray(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
+void processBuffer(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
 
-void updateWriteEvents(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int argIdx, int& writeEventCount);
+void updateWriteEvents(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int argIdx, int& writeEventCount);
 
-void processLocal(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-void processLocalArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-void processLocalBuffer(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
+void processLocal(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
+void processLocalArray(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
+void processLocalBuffer(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
 
-int processArgs(JNIEnv* jenv, JNIContext* jniContext, int& argPos, int& writeEventCount);
+int processArgs(JNIEnv* jenv, KernelContext* kernelContext, int& argPos, int& writeEventCount);
 
-void enqueueKernel(JNIContext* jniContext, Range& range, int passes, int argPos, int writeEventCount);
+void enqueueKernel(KernelContext* kernelContext, Range& range, int passes, int argPos, int writeEventCount);
 
-int getReadEvents(JNIContext* jniContext);
+int getReadEvents(KernelContext* kernelContext);
 
-void waitForReadEvents(JNIContext* jniContext, int readEventCount, int passes);
+void waitForReadEvents(KernelContext* kernelContext, int readEventCount, int passes);
 
-void checkEvents(JNIEnv* jenv, JNIContext* jniContext, int writeEventCount);
+void checkEvents(JNIEnv* jenv, KernelContext* kernelContext, int writeEventCount);
 
-void writeProfile(JNIEnv* jenv, JNIContext* jniContext);
+void writeProfile(JNIEnv* jenv, KernelContext* kernelContext);
 
-KernelArg* getArgForBuffer(JNIEnv* jenv, JNIContext* jniContext, jobject buffer);
+KernelArg* getArgForBuffer(JNIEnv* jenv, KernelContext* kernelContext, jobject buffer);
 
 void initialize(JNIEnv* jenv);
 void initialize(JNIEnv* jenv, jobject openCLDeviceObject);

@@ -25,7 +25,7 @@ class BufferManager {
       /**
        * Holds a list of jni contexts, representing kernel entry points.
        */
-      std::list<JNIContext*> jniContextList;
+      std::list<KernelContext*> kernelContextList;
 
       /**
        * Get an ArrayBuffer for a matching argObj. If no buffer containing the argObj is found, 

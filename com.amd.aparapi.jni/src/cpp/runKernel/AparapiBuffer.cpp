@@ -39,7 +39,7 @@
 #include "AparapiBuffer.h"
 #include "KernelArg.h"
 #include "List.h"
-#include "JNIContext.h"
+#include "KernelContext.h"
 
 AparapiBuffer::AparapiBuffer():
    numDims(0),
@@ -1552,7 +1552,7 @@ void AparapiBuffer::deleteBuffer(KernelArg* arg)
    }
 }
 
-void AparapiBuffer::process(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
+void AparapiBuffer::process(JNIEnv* jenv, cl_context context, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx) {
    
    cl_int status = CL_SUCCESS;
 
@@ -1592,11 +1592,10 @@ void AparapiBuffer::process(JNIEnv* jenv, cl_context context, JNIContext* jniCon
       arg->aparapiBuffer->mem = (cl_mem)0;
    }
 
-   updateBuffer(jenv, context, jniContext, arg, argPos, argIdx);
-
+   updateBuffer(jenv, context, kernelContext, arg, argPos, argIdx);
 }
 
-void AparapiBuffer::updateBuffer(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
+void AparapiBuffer::updateBuffer(JNIEnv* jenv, cl_context context, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx) {
 
    AparapiBuffer* buffer = arg->aparapiBuffer;
    cl_int status = CL_SUCCESS;
@@ -1615,7 +1614,7 @@ void AparapiBuffer::updateBuffer(JNIEnv* jenv, cl_context context, JNIContext* j
       memList.add(buffer->mem, __LINE__, __FILE__);
    }
 
-   status = clSetKernelArg(jniContext->kernel, argPos, sizeof(cl_mem), (void *)&(buffer->mem));
+   status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(cl_mem), (void *)&(buffer->mem));
    if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (buffer)");
 
    // Add the array length if needed
@@ -1623,13 +1622,13 @@ void AparapiBuffer::updateBuffer(JNIEnv* jenv, cl_context context, JNIContext* j
 
       for(int i = 0; i < buffer->numDims; i++) {
          argPos++;
-         status = clSetKernelArg(jniContext->kernel, argPos, sizeof(cl_uint), &(buffer->lens[i]));
+         status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(cl_uint), &(buffer->lens[i]));
          if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (buffer length)");
          if (config->isVerbose()){
             fprintf(stderr, "runKernel arg %d %s, length = %d\n", argIdx, arg->name, buffer->lens[i]);
          }
          argPos++;
-         status = clSetKernelArg(jniContext->kernel, argPos, sizeof(cl_uint), &(buffer->dims[i]));
+         status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(cl_uint), &(buffer->dims[i]));
          if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (buffer dimension)");
          if (config->isVerbose()){
             fprintf(stderr, "runKernel arg %d %s, dim = %d\n", argIdx, arg->name, buffer->dims[i]);

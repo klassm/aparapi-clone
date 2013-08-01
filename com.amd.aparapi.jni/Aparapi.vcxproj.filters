@@ -75,9 +75,6 @@
     <ClInclude Include="src\cpp\runKernel\Config.h">
       <Filter>Source Files\runKernel</Filter>
     </ClInclude>
-    <ClInclude Include="src\cpp\runKernel\JNIContext.h">
-      <Filter>Source Files\runKernel</Filter>
-    </ClInclude>
     <ClInclude Include="src\cpp\runKernel\KernelArg.h">
       <Filter>Source Files\runKernel</Filter>
     </ClInclude>
@@ -101,6 +98,9 @@
     </ClInclude>
     <ClInclude Include="src\cpp\runKernel\BufferManager.h">
       <Filter>Source Files\gpuElement</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\KernelContext.h">
+      <Filter>Source Files\runKernel</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -134,9 +134,6 @@
     <ClCompile Include="src\cpp\runKernel\Config.cpp">
       <Filter>Source Files\runKernel</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\runKernel\JNIContext.cpp">
-      <Filter>Source Files\runKernel</Filter>
-    </ClCompile>
     <ClCompile Include="src\cpp\runKernel\KernelArg.cpp">
       <Filter>Source Files\runKernel</Filter>
     </ClCompile>
@@ -157,6 +154,9 @@
     </ClCompile>
     <ClCompile Include="src\cpp\runKernel\BufferManager.cpp">
       <Filter>Source Files\gpuElement</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\KernelContext.cpp">
+      <Filter>Source Files\runKernel</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

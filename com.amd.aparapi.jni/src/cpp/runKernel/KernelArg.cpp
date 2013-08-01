@@ -1,5 +1,5 @@
 #include "KernelArg.h"
-#include "JNIContext.h"
+#include "KernelContext.h"
 #include "BufferManager.h"
 #include <string>
 #include <iostream>
@@ -15,11 +15,11 @@ jfieldID KernelArg::javaArrayFieldID=0;
 jfieldID KernelArg::sizeInBytesFieldID=0;
 jfieldID KernelArg::numElementsFieldID=0; 
 
-KernelArg::KernelArg(JNIEnv *jenv, jobject argObj, JNIContext *_jniContext):
+KernelArg::KernelArg(JNIEnv *jenv, jobject argObj, KernelContext *_kernelContext):
    argObj(argObj),
    arrayBuffer(NULL),
    aparapiBuffer(NULL),
-   jniContext(_jniContext)
+   kernelContext(_kernelContext)
    {
       javaArg = jenv->NewGlobalRef(argObj);   // save a global ref to the java Arg Object
       if (argClazz == 0){
@@ -65,53 +65,53 @@ const char* KernelArg::getTypeName() {
 }
 
 void KernelArg::getPrimitiveValue(JNIEnv *jenv, jfloat* value) {
-   jfieldID fieldID = jenv->GetFieldID(jniContext->kernelClass, name, "F");
-   *value = jenv->GetFloatField(jniContext->kernelObject, fieldID);
+   jfieldID fieldID = jenv->GetFieldID(kernelContext->kernelClass, name, "F");
+   *value = jenv->GetFloatField(kernelContext->kernelObject, fieldID);
 }
 void KernelArg::getPrimitiveValue(JNIEnv *jenv, jint* value) {
-   jfieldID fieldID = jenv->GetFieldID(jniContext->kernelClass, name, "I");
-   *value = jenv->GetIntField(jniContext->kernelObject, fieldID);
+   jfieldID fieldID = jenv->GetFieldID(kernelContext->kernelClass, name, "I");
+   *value = jenv->GetIntField(kernelContext->kernelObject, fieldID);
 }
 void KernelArg::getPrimitiveValue(JNIEnv *jenv, jboolean* value) {
-   jfieldID fieldID = jenv->GetFieldID(jniContext->kernelClass, name, "B");
-   *value = jenv->GetByteField(jniContext->kernelObject, fieldID);
+   jfieldID fieldID = jenv->GetFieldID(kernelContext->kernelClass, name, "B");
+   *value = jenv->GetByteField(kernelContext->kernelObject, fieldID);
 }
 void KernelArg::getPrimitiveValue(JNIEnv *jenv, jbyte* value) {
-   jfieldID fieldID = jenv->GetFieldID(jniContext->kernelClass, name, "B");
-   *value = jenv->GetByteField(jniContext->kernelObject, fieldID);
+   jfieldID fieldID = jenv->GetFieldID(kernelContext->kernelClass, name, "B");
+   *value = jenv->GetByteField(kernelContext->kernelObject, fieldID);
 }
 void KernelArg::getPrimitiveValue(JNIEnv *jenv, jlong* value) {
-   jfieldID fieldID = jenv->GetFieldID(jniContext->kernelClass, name, "J");
-   *value = jenv->GetLongField(jniContext->kernelObject, fieldID);
+   jfieldID fieldID = jenv->GetFieldID(kernelContext->kernelClass, name, "J");
+   *value = jenv->GetLongField(kernelContext->kernelObject, fieldID);
 }
 void KernelArg::getPrimitiveValue(JNIEnv *jenv, jdouble* value) {
-   jfieldID fieldID = jenv->GetFieldID(jniContext->kernelClass, name, "D");
-   *value = jenv->GetDoubleField(jniContext->kernelObject, fieldID);
+   jfieldID fieldID = jenv->GetFieldID(kernelContext->kernelClass, name, "D");
+   *value = jenv->GetDoubleField(kernelContext->kernelObject, fieldID);
 }
 
 void KernelArg::getStaticPrimitiveValue(JNIEnv *jenv, jfloat* value) {
-   jfieldID fieldID = jenv->GetStaticFieldID(jniContext->kernelClass, name, "F");
-   *value = jenv->GetStaticFloatField(jniContext->kernelClass, fieldID);
+   jfieldID fieldID = jenv->GetStaticFieldID(kernelContext->kernelClass, name, "F");
+   *value = jenv->GetStaticFloatField(kernelContext->kernelClass, fieldID);
 }
 void KernelArg::getStaticPrimitiveValue(JNIEnv *jenv, jint* value) {
-   jfieldID fieldID = jenv->GetStaticFieldID(jniContext->kernelClass, name, "I");
-   *value = jenv->GetStaticIntField(jniContext->kernelClass, fieldID);
+   jfieldID fieldID = jenv->GetStaticFieldID(kernelContext->kernelClass, name, "I");
+   *value = jenv->GetStaticIntField(kernelContext->kernelClass, fieldID);
 }
 void KernelArg::getStaticPrimitiveValue(JNIEnv *jenv, jboolean* value) {
-   jfieldID fieldID = jenv->GetStaticFieldID(jniContext->kernelClass, name, "Z");
-   *value = jenv->GetStaticBooleanField(jniContext->kernelClass, fieldID);
+   jfieldID fieldID = jenv->GetStaticFieldID(kernelContext->kernelClass, name, "Z");
+   *value = jenv->GetStaticBooleanField(kernelContext->kernelClass, fieldID);
 }
 void KernelArg::getStaticPrimitiveValue(JNIEnv *jenv, jbyte* value) {
-   jfieldID fieldID = jenv->GetStaticFieldID(jniContext->kernelClass, name, "B");
-   *value = jenv->GetStaticByteField(jniContext->kernelClass, fieldID);
+   jfieldID fieldID = jenv->GetStaticFieldID(kernelContext->kernelClass, name, "B");
+   *value = jenv->GetStaticByteField(kernelContext->kernelClass, fieldID);
 }
 void KernelArg::getStaticPrimitiveValue(JNIEnv *jenv, jlong* value) {
-   jfieldID fieldID = jenv->GetStaticFieldID(jniContext->kernelClass, name, "J");
-   *value = jenv->GetStaticLongField(jniContext->kernelClass, fieldID);
+   jfieldID fieldID = jenv->GetStaticFieldID(kernelContext->kernelClass, name, "J");
+   *value = jenv->GetStaticLongField(kernelContext->kernelClass, fieldID);
 }
 void KernelArg::getStaticPrimitiveValue(JNIEnv *jenv, jdouble* value) {
-   jfieldID fieldID = jenv->GetStaticFieldID(jniContext->kernelClass, name, "D");
-   *value = jenv->GetStaticDoubleField(jniContext->kernelClass, fieldID);
+   jfieldID fieldID = jenv->GetStaticFieldID(kernelContext->kernelClass, name, "D");
+   *value = jenv->GetStaticDoubleField(kernelContext->kernelClass, fieldID);
 }
 
 cl_int KernelArg::setPrimitiveArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose){
@@ -119,32 +119,32 @@ cl_int KernelArg::setPrimitiveArg(JNIEnv *jenv, int argIdx, int argPos, bool ver
    if (isFloat()) {
        jfloat f;
        getPrimitive(jenv, argIdx, argPos, verbose, &f);
-       status = clSetKernelArg(jniContext->kernel, argPos, sizeof(f), &f);
+       status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(f), &f);
    }
    else if (isInt()) {
        jint i;
        getPrimitive(jenv, argIdx, argPos, verbose, &i);
-       status = clSetKernelArg(jniContext->kernel, argPos, sizeof(i), &i);
+       status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(i), &i);
    }
    else if (isBoolean()) {
        jboolean z;
        getPrimitive(jenv, argIdx, argPos, verbose, &z);
-       status = clSetKernelArg(jniContext->kernel, argPos, sizeof(z), &z);
+       status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(z), &z);
    }
    else if (isByte()) {
        jbyte b;
        getPrimitive(jenv, argIdx, argPos, verbose, &b);
-       status = clSetKernelArg(jniContext->kernel, argPos, sizeof(b), &b);
+       status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(b), &b);
    }
    else if (isLong()) {
        jlong l;
        getPrimitive(jenv, argIdx, argPos, verbose, &l);
-       status = clSetKernelArg(jniContext->kernel, argPos, sizeof(l), &l);
+       status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(l), &l);
    }
    else if (isDouble()) {
        jdouble d;
        getPrimitive(jenv, argIdx, argPos, verbose, &d);
-       status = clSetKernelArg(jniContext->kernel, argPos, sizeof(d), &d);
+       status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(d), &d);
    }
    return status;
 }

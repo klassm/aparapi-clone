@@ -15,7 +15,7 @@
 #define strdup _strdup
 #endif
 
-class JNIContext;
+class KernelContext;
 
 class KernelArg{
    private:
@@ -27,7 +27,7 @@ class KernelArg{
 
       const char* getTypeName();
 
-      //all of these use JNIContext so they can't be inlined
+      //all of these use KernelContext so they can't be inlined
 
       //get the value of a primitive arguement
       void getPrimitiveValue(JNIEnv *jenv, jfloat *value);
@@ -64,7 +64,7 @@ class KernelArg{
    public:
       static jfieldID javaArrayFieldID; 
    public:
-      JNIContext *jniContext;  
+      KernelContext *kernelContext;  
       jobject argObj;    // the Java KernelRunner.KernelArg object that we are mirroring.
       jobject javaArg;   // global reference to the corresponding java KernelArg object we grabbed our own global reference so that the object won't be collected until we dispose!
       char *name;        // used for debugging printfs
@@ -73,8 +73,8 @@ class KernelArg{
       ArrayBuffer *arrayBuffer;
       AparapiBuffer *aparapiBuffer;
 
-      // Uses JNIContext so cant inline here see below
-      KernelArg(JNIEnv *jenv, jobject argObj, JNIContext *jniContext);
+      // Uses KernelContext so cant inline here see below
+      KernelArg(JNIEnv *jenv, jobject argObj, KernelContext *kernelContext);
 
       ~KernelArg(){
       }
@@ -193,10 +193,10 @@ class KernelArg{
          jenv->SetIntField(javaArg, typeFieldID,type );
       }
 
-      // Uses JNIContext so can't inline here we below.  
+      // Uses KernelContext so can't inline here we below.  
       void syncValue(JNIEnv *jenv);
 
-      // Uses JNIContext so can't inline here we below.  
+      // Uses KernelContext so can't inline here we below.  
       cl_int setPrimitiveArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose);
 };
 

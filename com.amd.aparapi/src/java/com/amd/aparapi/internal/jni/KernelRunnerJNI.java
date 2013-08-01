@@ -290,19 +290,101 @@ public abstract class KernelRunnerJNI {
     * @param _flags
     * @return
     */
+   @Deprecated
    @DocMe protected native synchronized long initJNI(Kernel _kernel, OpenCLDevice _device, int _flags);
 
+   @Deprecated
    protected native int getJNI(Object _array);
 
+   @Deprecated
    protected native long buildProgramJNI(long _jniContextHandle, String _source);
 
+   @Deprecated
    protected native int setArgsJNI(long _jniContextHandle, KernelArgJNI[] _args, int argc);
 
+   @Deprecated
    protected native int runKernelJNI(long _jniContextHandle, Range _range, boolean _needSync, int _passes);
 
+   @Deprecated
    protected native int disposeJNI();
 
-   protected native String getExtensionsJNI(long _jniContextHandle);
-
+   @Deprecated
+   // TODO
    protected native synchronized List<ProfileInfo> getProfileInfoJNI(long _jniContextHandle);
+
+   /**
+    * Init the JNI environment for a new KernelRunner.
+    * Synchronized to avoid race in clGetPlatformIDs() in OpenCL lib problem should fixed in some future OpenCL version.
+    *
+    * @param _device device the KernelRunner is bound to
+    * @param _flags currently only {@link KernelRunnerJNI#JNI_FLAG_USE_GPU}.
+    * @return identifier for the native KernelRunner context.
+    */
+   protected synchronized native long initKernelRunnerJNI(OpenCLDevice _device, int _flags);
+
+   /**
+    * Init the environment for the given {@link Kernel} on JNI side.
+    *
+    * @param _kernelRunnerHandle handle for the current kernel runner on JNI side
+    * @param _kernel kernel to prepare for
+    * @return handle for the kernel on JNI side
+    */
+   protected native long initKernelJNI(long _kernelRunnerHandle, Kernel _kernel);
+
+   /**
+    * Build the given source code for the given kernel runner and kernel handle.
+    *
+    * @param _kernelRunnerHandle relates to the runner context on JNI side
+    * @param _kernelHandle relates to the kernel context on JNI side
+    * @param _source source code to compile
+    * @return kernelHandle or 0 (if an error occurred)
+    */
+   protected native long buildProgramJNI(long _kernelRunnerHandle, long _kernelHandle, String _source);
+
+   /**
+    * Set the given array of {@link KernelArgJNI} objects on the kernel specified by _kernelHandle.
+    *
+    * @param _kernelRunnerHandle relates to the runner context on JNI side
+    * @param _kernelHandle relates to the kernel context on JNI side
+    * @param _args array of arguments to set
+    * @param _argc number of arguments
+    * @return OpenCL status code
+    */
+   protected native int setArgsJNI(long _kernelRunnerHandle, long _kernelHandle, KernelArgJNI[] _args, int _argc);
+
+   /**
+    * Run the kernel.
+    *
+    * @param _kernelRunnerHandle relates to the runner context on JNI side
+    * @param _kernelHandle relates to the kernel context on JNI side
+    * @param _range range to use for running (device is ignored!)
+    * @param _needSync specifies whether kernel arguments have to be updated before execution
+    * @param _passes times to run the kernel
+    * @return OpenCL status code
+    */
+   protected native int runKernelJNI(long _kernelRunnerHandle, long _kernelHandle, Range _range, boolean _needSync, int _passes);
+
+   /**
+    * Dispose a KernelRunner specified by the given handle.
+    *
+    * @param _kernelRunnerHandle relates to the runner context on JNI side
+    * @return OpenCL status code
+    */
+   protected native int disposeJNI(long _kernelRunnerHandle);
+
+   /**
+    * Copy an element back from the GPU.
+    *
+    * @param _kernelRunnerHandle relates to the runner context on JNI side
+    * @param _array array reference to copy back
+    * @return OpenCL status code
+    */
+   protected native int getJNI(long _kernelRunnerHandle, Object _array);
+
+   /**
+    * Get extensions for the given runner handle.
+    * @param _kernelRunnerHandle relates to the runner context on JNI side
+    * @return String of extensions
+    */
+   protected native String getExtensionsJNI(long _kernelRunnerHandle);
 }
