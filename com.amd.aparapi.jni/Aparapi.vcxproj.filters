@@ -22,6 +22,9 @@
     <Filter Include="Source Files\gpuElement">
       <UniqueIdentifier>{dfe1bbc2-866d-413b-9d2b-bb5280c3400c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\util">
+      <UniqueIdentifier>{91afdd5f-c816-45fd-9fe2-278e1105af8a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\com_amd_aparapi_KernelRunner.h">

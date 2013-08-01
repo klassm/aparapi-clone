@@ -36,6 +36,7 @@ public:
    }
 
    void dispose(JNIEnv *jenv, Config* config);
+   void disposeMemory();
 
    /**
     * Release JNI critical pinned arrays before returning to java code

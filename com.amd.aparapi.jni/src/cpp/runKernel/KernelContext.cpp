@@ -46,8 +46,14 @@ void KernelContext::dispose(JNIEnv *jenv, Config* config) {
             free(arg->name); arg->name = NULL;
          }
 
-         arg->arrayBuffer = NULL;
-         arg->aparapiBuffer = NULL;
+         if (arg->arrayBuffer != NULL) {
+            arg->arrayBuffer->deleteReference();
+            arg->arrayBuffer = NULL;
+         }
+         if (arg->aparapiBuffer != NULL) {
+            arg->aparapiBuffer->deleteReference();
+            arg->aparapiBuffer = NULL;
+         }
          arg->argObj = NULL;
          
          delete arg; arg=args[i]=NULL;
@@ -92,4 +98,13 @@ cl_int KernelContext::setLocalAparapiBufferArg(JNIEnv *jenv, int argIdx, int arg
        fprintf(stderr, "ISLOCAL, clSetKernelArg(kernelContext->kernel, %d, %d, NULL);\n", argIdx, (int) kernelArg->aparapiBuffer->lengthInBytes);
    }
    return(clSetKernelArg(this->kernel, argPos, (int)kernelArg->aparapiBuffer->lengthInBytes, NULL));
+}
+
+void KernelContext::disposeMemory() {
+   for (int i = 0; i < argc; i++) {
+      KernelArg* arg = args[i];
+      arg->aparapiBuffer = NULL;
+      arg->arrayBuffer = NULL;
+   }
+   firstRun = true;
 }

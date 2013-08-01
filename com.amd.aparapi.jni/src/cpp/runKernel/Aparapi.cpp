@@ -882,6 +882,9 @@ KernelArg* getArgForBuffer(JNIEnv* jenv, KernelContext* kernelContext, jobject b
 
 JNI_JAVA(jlong, KernelRunnerJNI, initKernelRunnerJNI)
    (JNIEnv *jenv, jobject jobj, jobject openCLDeviceObject, jint flags) {
+
+      initialize(jenv);
+
       if (openCLDeviceObject == NULL){
          fprintf(stderr, "no device object!\n");
       }
@@ -897,7 +900,10 @@ JNI_JAVA(jlong, KernelRunnerJNI, initKernelRunnerJNI)
 }
 
 JNI_JAVA(jlong, KernelRunnerJNI, initKernelJNI)
-   (JNIEnv *jenv, jobject jobj, long kernelRunnerHandle, jobject kernelObject) {
+   (JNIEnv *jenv, jobject jobj, jlong kernelRunnerHandle, jobject kernelObject) {
+      
+      initialize(jenv);
+
       KernelRunnerContext* kernelRunnerContext = KernelRunnerContext::getKernelRunnerContext(kernelRunnerHandle);
 
       cl_int status = CL_SUCCESS;
@@ -1049,7 +1055,7 @@ JNI_JAVA(jint, KernelRunnerJNI, runKernelJNI)
          int writeEventCount = 0;
          processArgs(jenv, kernelRunnerContext, kernelContext, argPos, writeEventCount);
 
-         kernelRunnerContext->bufferManager->cleanUpNonReferencedBuffers(jenv, kernelRunnerContext->kernelContextList);
+         kernelRunnerContext->bufferManager->cleanUpNonReferencedBuffers(jenv);
 
          enqueueKernel(kernelRunnerContext, kernelContext, range, passes, argPos, writeEventCount);
          int readEventCount = getReadEvents(jenv, kernelRunnerContext, kernelContext);
@@ -1077,8 +1083,8 @@ JNI_JAVA(jint, KernelRunnerJNI, getJNI)
 
       cl_int status = CL_SUCCESS;
 
-      std::list<KernelContext*> contextList = kernelRunnerContext->kernelContextList;
-      for (std::list<KernelContext*>::iterator it = contextList.begin(); it != contextList.end(); it++) {
+      std::vector<KernelContext*> contextList = kernelRunnerContext->kernelContextList;
+      for (std::vector<KernelContext*>::iterator it = contextList.begin(); it != contextList.end(); it++) {
          KernelContext *context = *it;
 
          KernelArg *arg = getArgForBuffer(jenv, context, buffer);
@@ -1184,6 +1190,23 @@ JNI_JAVA(jint, KernelRunnerJNI, disposeKernelRunnerJNI)
       CLException::checkCLError(status, "dispose()");
       
       return(status);
+}
+
+JNI_JAVA(jint, KernelRunnerJNI, freeKernelRunnerMemoryJNI)
+      (JNIEnv *jenv, jobject jobj, jlong kernelRunnerContextHandle) {
+      KernelRunnerContext* kernelRunnerContext = KernelRunnerContext::getKernelRunnerContext(kernelRunnerContextHandle);
+
+      if (kernelRunnerContext == NULL) {
+         return 0;
+      }
+
+      kernelRunnerContext->disposeMemory(jenv);
+
+      cl_int status = CL_SUCCESS;
+      CLException::checkCLError(status, "dispose()");
+      
+      return(status);
+
 }
 
 JNI_JAVA(jstring, KernelRunnerJNI, getExtensionsJNI)

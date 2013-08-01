@@ -6,6 +6,7 @@
 #include "com_amd_aparapi_internal_jni_KernelRunnerJNI.h"
 #include "BufferManager.h"
 #include "KernelContext.h"
+#include <vector>
 
 class KernelRunnerContext
 {
@@ -20,6 +21,7 @@ public:
    
    static KernelRunnerContext* contextFor(JNIEnv* jenv, jobject _openCLDeviceObject, int flags, Config* config);
    void dispose(JNIEnv* jenv);
+   void disposeMemory(JNIEnv* jenv);
 
    static KernelRunnerContext* getKernelRunnerContext(jlong kernelRunnerContextHandle){
       return((KernelRunnerContext*)kernelRunnerContextHandle);
@@ -28,7 +30,7 @@ public:
    /**
       * Holds a list of jni contexts, representing kernel entry points.
       */
-   std::list<KernelContext*> kernelContextList;
+   std::vector<KernelContext*> kernelContextList;
 
    jboolean isUsingGPU(){
       //I'm pretty sure that this is equivalend to:

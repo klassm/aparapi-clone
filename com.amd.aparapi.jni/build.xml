@@ -563,8 +563,10 @@ First consider editing the properties in build.properties
       <delete file="JNIHelper.o" />
       <delete file="CLHelper.obj" />
       <delete file="CLHelper.o" />
-      <delete file="JNIContext.obj" />
-      <delete file="JNIContext.o" />
+      <delete file="KernelContext.obj" />
+      <delete file="KernelContext.o" />
+      <delete file="KernelRunnerContext.obj" />
+      <delete file="KernelRunnerContext.o" />
       <delete file="KernelArg.obj" />
       <delete file="KernelArg.o" />
       <delete file="Range.obj" />
@@ -624,7 +626,8 @@ First consider editing the properties in build.properties
          <arg value="src/cpp/runKernel/AparapiBuffer.cpp" />
          <arg value="src/cpp/runKernel/BufferManager.cpp" />
          <arg value="src/cpp/runKernel/Config.cpp" />
-         <arg value="src/cpp/runKernel/JNIContext.cpp" />
+         <arg value="src/cpp/runKernel/KernelContext.cpp" />
+         <arg value="src/cpp/runKernel/KernelRunnerContext.cpp" />
          <arg value="src/cpp/runKernel/KernelArg.cpp" />
          <arg value="src/cpp/runKernel/ProfileInfo.cpp" />
          <arg value="src/cpp/runKernel/Range.cpp" />
@@ -663,7 +666,8 @@ First consider editing the properties in build.properties
          <arg value="src/cpp/runKernel/AparapiBuffer.cpp" />
 		 <arg value="src/cpp/runKernel/BufferManager.cpp" />
          <arg value="src/cpp/runKernel/Config.cpp" />
-         <arg value="src/cpp/runKernel/JNIContext.cpp" />
+         <arg value="src/cpp/runKernel/KernelContext.cpp" />
+		 <arg value="src/cpp/runKernel/KernelRunnerContext.cpp" />
          <arg value="src/cpp/runKernel/KernelArg.cpp" />
          <arg value="src/cpp/runKernel/ProfileInfo.cpp" />
          <arg value="src/cpp/runKernel/Range.cpp" />
@@ -707,7 +711,8 @@ First consider editing the properties in build.properties
          <arg value="src/cpp/runKernel/AparapiBuffer.cpp" />
 		 <arg value="src/cpp/runKernel/BufferManager.cpp" />
          <arg value="src/cpp/runKernel/Config.cpp" />
-         <arg value="src/cpp/runKernel/JNIContext.cpp" />
+         <arg value="src/cpp/runKernel/KernelContext.cpp" />
+		 <arg value="src/cpp/runKernel/KernelRunnerContext.cpp" />
          <arg value="src/cpp/runKernel/KernelArg.cpp" />
          <arg value="src/cpp/runKernel/ProfileInfo.cpp" />
          <arg value="src/cpp/runKernel/Range.cpp" />
@@ -753,7 +758,8 @@ First consider editing the properties in build.properties
          <arg value="src/cpp/runKernel/AparapiBuffer.cpp" />
 		 <arg value="src/cpp/runKernel/BufferManager.cpp" />
          <arg value="src/cpp/runKernel/Config.cpp" />
-         <arg value="src/cpp/runKernel/JNIContext.cpp" />
+         <arg value="src/cpp/runKernel/KernelContext.cpp" />
+		 <arg value="src/cpp/runKernel/KernelRunnerContext.cpp" />
          <arg value="src/cpp/runKernel/KernelArg.cpp" />
          <arg value="src/cpp/runKernel/ProfileInfo.cpp" />
          <arg value="src/cpp/runKernel/Range.cpp" />

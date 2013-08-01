@@ -12,6 +12,7 @@ KernelRunnerContext::KernelRunnerContext(cl_device_id _deviceId, cl_device_type 
       flags(_flags)
 {
    bufferManager = new BufferManager();
+   kernelContextList.reserve(20);
 }
 
 
@@ -19,7 +20,7 @@ KernelRunnerContext::~KernelRunnerContext(void) {
 }
 
 void KernelRunnerContext::dispose(JNIEnv* jenv) {
-   for (std::list<KernelContext*>::iterator it = kernelContextList.begin(); it != kernelContextList.end(); it++) {
+   for (std::vector<KernelContext*>::iterator it = kernelContextList.begin(); it != kernelContextList.end(); it++) {
       (*it)->dispose(jenv, config);
       delete (*it);
    }
@@ -44,7 +45,7 @@ void KernelRunnerContext::dispose(JNIEnv* jenv) {
       commandQueue = (cl_command_queue) NULL;
    }
 
-   bufferManager->cleanUpNonReferencedBuffers(jenv, kernelContextList, true);
+   bufferManager->cleanUpNonReferencedBuffers(jenv, true);
 
    if (config->isTrackingOpenCLResources()){
       fprintf(stderr, "after dispose{ \n");
@@ -55,6 +56,14 @@ void KernelRunnerContext::dispose(JNIEnv* jenv) {
       writeEventList.report(stderr); 
       fprintf(stderr, "}\n");
    }
+}
+
+void KernelRunnerContext::disposeMemory(JNIEnv* jenv) {
+   for (std::vector<KernelContext*>::iterator it = kernelContextList.begin(); it != kernelContextList.end(); it++) {
+      KernelContext* kernel = (*it);
+      kernel->disposeMemory();
+   }
+   bufferManager->cleanUpNonReferencedBuffers(jenv);
 }
 
 /**
@@ -104,6 +113,5 @@ KernelRunnerContext* KernelRunnerContext::contextFor(JNIEnv* jenv, jobject _open
 }
 
 void KernelRunnerContext::registerKernelContext(KernelContext* kernelContext) {
-   std::list<KernelContext*>::iterator it = kernelContextList.begin();
-   kernelContextList.insert(it, kernelContext);
+   kernelContextList.push_back(kernelContext);
 }

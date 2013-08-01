@@ -258,59 +258,11 @@ public abstract class KernelRunnerJNI {
    @UsedByJNICode protected static final int JNI_FLAG_USE_GPU = 1 << 2;
 
    /**
-    * This 'bit' indicates that we wish to enable verbose JNI layer messages to stderr.<br/>
-    * 
-    * @see com.amd.aparapi.annotations.UsedByJNICode
-    * 
-    * @author gfrost
+    * Returns an amount of {@link ProfileInfo} for a given kernel.
+    * @param kernelContextHandle kernel handle to get the profile info for
+    * @return profile info
     */
-   // @UsedByJNICode protected static final int JNI_FLAG_ENABLE_VERBOSE_JNI = 1 << 3;
-
-   /**
-    * This 'bit' indicates that we wish to enable OpenCL resource tracking by JNI layer to be written to stderr.<br/>
-    * 
-    * @see com.amd.aparapi.annotations.UsedByJNICode
-    * @see com.amd.aparapi.annotations.Experimental
-    * 
-    * @author gfrost
-    */
-   //  @UsedByJNICode @Annotations.Experimental protected static final int JNI_FLAG_ENABLE_VERBOSE_JNI_OPENCL_RESOURCE_TRACKING = 1 << 4;
-
-   /*
-    * Native methods
-    */
-
-   /**
-    * TODO:
-    * 
-    * synchronized to avoid race in clGetPlatformIDs() in OpenCL lib problem should fixed in some future OpenCL version
-    * 
-    * @param _kernel
-    * @param _device
-    * @param _flags
-    * @return
-    */
-   @Deprecated
-   @DocMe protected native synchronized long initJNI(Kernel _kernel, OpenCLDevice _device, int _flags);
-
-   @Deprecated
-   protected native int getJNI(Object _array);
-
-   @Deprecated
-   protected native long buildProgramJNI(long _jniContextHandle, String _source);
-
-   @Deprecated
-   protected native int setArgsJNI(long _jniContextHandle, KernelArgJNI[] _args, int argc);
-
-   @Deprecated
-   protected native int runKernelJNI(long _jniContextHandle, Range _range, boolean _needSync, int _passes);
-
-   @Deprecated
-   protected native int disposeJNI();
-
-   @Deprecated
-   // TODO
-   protected native synchronized List<ProfileInfo> getProfileInfoJNI(long _jniContextHandle);
+   protected native synchronized List<ProfileInfo> getProfileInfoJNI(long kernelContextHandle);
 
    /**
     * Init the JNI environment for a new KernelRunner.
@@ -371,7 +323,15 @@ public abstract class KernelRunnerJNI {
     * @param _kernelRunnerHandle relates to the runner context on JNI side
     * @return OpenCL status code
     */
-   protected native int disposeJNI(long _kernelRunnerHandle);
+   protected native int disposeKernelRunnerJNI(long _kernelRunnerHandle);
+
+   /**
+    * Dispose all GPU memory associated to the kernels associated with the given KernelRunner.
+    *
+    * @param _kernelRunnerHandle relates to the runner context on JNI side
+    * @return OpenCL status code
+    */
+   protected native int freeKernelRunnerMemoryJNI(long _kernelRunnerHandle);
 
    /**
     * Copy an element back from the GPU.

@@ -84,37 +84,35 @@ public class KernelRunner extends KernelRunnerJNI {
 
    private static Logger logger = Logger.getLogger(Config.getLoggerName());
 
+   private OpenCLDevice lastGPUExecutionDevice = null;
    private Map<Class<? extends Kernel>, KernelMapping> kernelMappingMap = new HashMap<Class<? extends Kernel>, KernelMapping>();
 
    private final ExecutorService threadPool = Executors.newCachedThreadPool();
 
    private final LinkedHashSet<EXECUTION_MODE> executionModes = EXECUTION_MODE.getDefaultExecutionModes();
-
    private Iterator<EXECUTION_MODE> currentMode = executionModes.iterator();
-
    private EXECUTION_MODE executionMode = currentMode.next();
 
    private Set<String> capabilitiesSet;
 
    private long accumulatedExecutionTime = 0;
-
    private long conversionTime = 0;
-
    private long executionTime = 0;
-
-   private OpenCLDevice lastGPUExecutionDevice = null;
 
    private final Set<Object> puts = new HashSet<Object>();
 
+   private long kernelRunnerContextHandle = 0;
+
+
    /**
     * <code>Kernel.dispose()</code> delegates to <code>KernelRunner.dispose()</code> which delegates to
-    * <code>disposeJNI()</code> to actually close JNI data structures.<br/>
+    * <code>disposeKernelRunnerJNI()</code> to actually close JNI data structures.<br/>
     *
-    * @see #disposeJNI()
+    * @see #disposeKernelRunnerJNI
     */
    public void dispose() {
       if (getExecutionMode().isOpenCL()) {
-         disposeJNI();
+         disposeKernelRunnerJNI(kernelRunnerContextHandle);
       }
       threadPool.shutdownNow();
    }
@@ -210,9 +208,8 @@ public class KernelRunner extends KernelRunnerJNI {
     *          The globalSize requested by the user (via <code>Kernel.execute(globalSize)</code>)
     * @param _passes
     *          The # of passes requested by the user (via <code>Kernel.execute(globalSize, passes)</code>). Note this is usually defaulted to 1 via <code>Kernel.execute(globalSize)</code>.
-    * @return
     */
-   private long executeJava(Kernel kernel, final Range _range, final int _passes) {
+   private void executeJava(Kernel kernel, final Range _range, final int _passes) {
       if (logger.isLoggable(Level.FINE)) {
          logger.fine("executeJava: range = " + _range);
       }
@@ -474,8 +471,6 @@ public class KernelRunner extends KernelRunnerJNI {
             await(joinBarrier); // This dispatch thread waits for all worker threads here. 
          }
       } // execution mode == JTP
-
-      return 0;
    }
 
    private static void await(CyclicBarrier _barrier) {
@@ -803,42 +798,42 @@ public class KernelRunner extends KernelRunnerJNI {
    private KernelRunner executeOpenCL(final Kernel kernel, KernelMapping kernelMapping,
                                       final Range _range, final int _passes) throws AparapiException {
       /*
-      if (_range.getDims() > getMaxWorkItemDimensionsJNI(jniContextHandle)) {
+      if (_range.getDims() > getMaxWorkItemDimensionsJNI(kernelContextHandle)) {
          throw new RangeException("Range dim size " + _range.getDims() + " > device "
-               + getMaxWorkItemDimensionsJNI(jniContextHandle));
+               + getMaxWorkItemDimensionsJNI(kernelContextHandle));
       }
-      if (_range.getWorkGroupSize() > getMaxWorkGroupSizeJNI(jniContextHandle)) {
+      if (_range.getWorkGroupSize() > getMaxWorkGroupSizeJNI(kernelContextHandle)) {
          throw new RangeException("Range workgroup size " + _range.getWorkGroupSize() + " > device "
-               + getMaxWorkGroupSizeJNI(jniContextHandle));
+               + getMaxWorkGroupSizeJNI(kernelContextHandle));
       }
       
-            if (_range.getGlobalSize(0) > getMaxWorkItemSizeJNI(jniContextHandle, 0)) {
+            if (_range.getGlobalSize(0) > getMaxWorkItemSizeJNI(kernelContextHandle, 0)) {
                throw new RangeException("Range globalsize 0 " + _range.getGlobalSize(0) + " > device "
-                     + getMaxWorkItemSizeJNI(jniContextHandle, 0));
+                     + getMaxWorkItemSizeJNI(kernelContextHandle, 0));
             }
             if (_range.getDims() > 1) {
-               if (_range.getGlobalSize(1) > getMaxWorkItemSizeJNI(jniContextHandle, 1)) {
+               if (_range.getGlobalSize(1) > getMaxWorkItemSizeJNI(kernelContextHandle, 1)) {
                   throw new RangeException("Range globalsize 1 " + _range.getGlobalSize(1) + " > device "
-                        + getMaxWorkItemSizeJNI(jniContextHandle, 1));
+                        + getMaxWorkItemSizeJNI(kernelContextHandle, 1));
                }
                if (_range.getDims() > 2) {
-                  if (_range.getGlobalSize(2) > getMaxWorkItemSizeJNI(jniContextHandle, 2)) {
+                  if (_range.getGlobalSize(2) > getMaxWorkItemSizeJNI(kernelContextHandle, 2)) {
                      throw new RangeException("Range globalsize 2 " + _range.getGlobalSize(2) + " > device "
-                           + getMaxWorkItemSizeJNI(jniContextHandle, 2));
+                           + getMaxWorkItemSizeJNI(kernelContextHandle, 2));
                   }
                }
             }
       
 
       if (logger.isLoggable(Level.FINE)) {
-         logger.fine("maxComputeUnits=" + this.getMaxComputeUnitsJNI(jniContextHandle));
-         logger.fine("maxWorkGroupSize=" + this.getMaxWorkGroupSizeJNI(jniContextHandle));
-         logger.fine("maxWorkItemDimensions=" + this.getMaxWorkItemDimensionsJNI(jniContextHandle));
-         logger.fine("maxWorkItemSize(0)=" + getMaxWorkItemSizeJNI(jniContextHandle, 0));
+         logger.fine("maxComputeUnits=" + this.getMaxComputeUnitsJNI(kernelContextHandle));
+         logger.fine("maxWorkGroupSize=" + this.getMaxWorkGroupSizeJNI(kernelContextHandle));
+         logger.fine("maxWorkItemDimensions=" + this.getMaxWorkItemDimensionsJNI(kernelContextHandle));
+         logger.fine("maxWorkItemSize(0)=" + getMaxWorkItemSizeJNI(kernelContextHandle, 0));
          if (_range.getDims() > 1) {
-            logger.fine("maxWorkItemSize(1)=" + getMaxWorkItemSizeJNI(jniContextHandle, 1));
+            logger.fine("maxWorkItemSize(1)=" + getMaxWorkItemSizeJNI(kernelContextHandle, 1));
             if (_range.getDims() > 2) {
-               logger.fine("maxWorkItemSize(2)=" + getMaxWorkItemSizeJNI(jniContextHandle, 2));
+               logger.fine("maxWorkItemSize(2)=" + getMaxWorkItemSizeJNI(kernelContextHandle, 2));
             }
          }
       }
@@ -851,7 +846,7 @@ public class KernelRunner extends KernelRunnerJNI {
       }
 
       // native side will reallocate array buffers if necessary
-      if (runKernelJNI(kernelMapping.jniContextHandle, _range, needSync, _passes) != 0) {
+      if (runKernelJNI(kernelRunnerContextHandle, kernelMapping.kernelContextHandle, _range, needSync, _passes) != 0) {
          logger.warning("### CL exec seems to have failed. Trying to revert to Java ###");
          setFallbackExecutionMode();
          return execute(kernel, _range, _passes);
@@ -902,6 +897,11 @@ public class KernelRunner extends KernelRunnerJNI {
 
    public synchronized KernelRunner execute(Kernel kernel, int globalSize, int passes) {
       return execute(kernel, Range.create(Device.best(), globalSize), passes);
+   }
+
+   private void initKernelRunnerContextHandle(OpenCLDevice device, int flags) {
+      if (kernelRunnerContextHandle != 0) return;
+      kernelRunnerContextHandle = initKernelRunnerJNI(device, flags);
    }
 
    public synchronized KernelRunner execute(Kernel kernel, final Range _range, final int _passes) {
@@ -967,6 +967,7 @@ public class KernelRunner extends KernelRunnerJNI {
                         }
                      }
 
+                     initKernelRunnerContextHandle(openCLDevice, jniFlags);
                      lastGPUExecutionDevice = openCLDevice;
 
                      //  jniFlags |= (Config.enableProfiling ? JNI_FLAG_ENABLE_PROFILING : 0);
@@ -978,15 +979,14 @@ public class KernelRunner extends KernelRunnerJNI {
                      // code that requires the capabilities.
 
                      // synchronized(Kernel.class){
-                     long jniContextHandle = initJNI(kernel, openCLDevice, jniFlags); // openCLDevice will not be null here
-                     currentKernelMapping.jniContextHandle = jniContextHandle;
+                     currentKernelMapping.kernelContextHandle = initKernelJNI(kernelRunnerContextHandle, kernel);
                   } // end of synchronized! issue 68
 
-                  if (currentKernelMapping.jniContextHandle == 0) {
+                  if (currentKernelMapping.kernelContextHandle == 0) {
                      return warnFallBackAndExecute(kernel, _range, _passes, "initJNI failed to return a valid handle");
                   }
 
-                  final String extensions = getExtensionsJNI(currentKernelMapping.jniContextHandle);
+                  final String extensions = getExtensionsJNI(kernelRunnerContextHandle);
                   capabilitiesSet = new HashSet<String>();
 
                   final StringTokenizer strTok = new StringTokenizer(extensions);
@@ -1032,7 +1032,7 @@ public class KernelRunner extends KernelRunnerJNI {
                   }
 
                   // Send the string to OpenCL to compile it
-                  if (buildProgramJNI(currentKernelMapping.jniContextHandle, openCL) == 0) {
+                  if (buildProgramJNI(kernelRunnerContextHandle, currentKernelMapping.kernelContextHandle, openCL) == 0) {
                      return warnFallBackAndExecute(kernel, _range, _passes, "OpenCL compile failed");
                   }
 
@@ -1047,7 +1047,8 @@ public class KernelRunner extends KernelRunnerJNI {
                   // (private buffers do not get treated as arguments)
 
                   KernelArg[] kernelArgsArray = currentKernelMapping.kernelArgsAsArray();
-                  setArgsJNI(currentKernelMapping.jniContextHandle, kernelArgsArray, kernelArgsArray.length);
+                  setArgsJNI(kernelRunnerContextHandle, currentKernelMapping.kernelContextHandle,
+                        kernelArgsArray, kernelArgsArray.length);
 
                   conversionTime = System.currentTimeMillis() - executeStartTime;
 
@@ -1337,7 +1338,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
       if (((getExecutionMode() == EXECUTION_MODE.GPU) || (getExecutionMode() == EXECUTION_MODE.CPU))) {
          // Only makes sense when we are using OpenCL
-         return (getProfileInfoJNI(kernelMapping.jniContextHandle));
+         return (getProfileInfoJNI(kernelMapping.kernelContextHandle));
       } else {
          return (null);
       }
@@ -1845,7 +1846,7 @@ public class KernelRunner extends KernelRunnerJNI {
       if (explicit
             && ((getExecutionMode() == EXECUTION_MODE.GPU) || (getExecutionMode() == EXECUTION_MODE.CPU))) {
          // Only makes sense when we are using OpenCL
-         getJNI(array);
+         getJNI(kernelRunnerContextHandle, array);
       }
    }
 
@@ -1913,5 +1914,11 @@ public class KernelRunner extends KernelRunnerJNI {
 
    public void setFallbackExecutionMode() {
       executionMode = EXECUTION_MODE.getFallbackExecutionMode();
+   }
+
+   public void freeGPUMemory() {
+      if (executionMode == EXECUTION_MODE.GPU && kernelRunnerContextHandle != 0) {
+         freeKernelRunnerMemoryJNI(kernelRunnerContextHandle);
+      }
    }
 }

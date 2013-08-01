@@ -26,6 +26,12 @@ class GPUElement {
 
 		GPUElement();
 
+      int referenceCount;
+
+      void addReference();
+      void deleteReference();
+      bool hasReferences();
+
 		virtual void process(JNIEnv* jenv, cl_context context, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
    private:
 };

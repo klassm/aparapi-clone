@@ -170,17 +170,34 @@ void KernelArg::updateReference(JNIEnv *jenv, BufferManager* bufferManager) {
          doUpdate = true;
       } else if (!jenv->IsSameObject(newRef, this->arrayBuffer->javaObject)) {
          doUpdate = true;
-         bufferManager->replacedArrayBuffer = true;
+
       }
 
       if (doUpdate) {
+         ArrayBuffer* oldBuffer = this->arrayBuffer;
          this->arrayBuffer = bufferManager->getArrayBufferFor(jenv, newRef);
+         if (oldBuffer != arrayBuffer) {
+            bufferManager->replacedArrayBuffer = true;
+            if (oldBuffer != NULL) {
+               oldBuffer->deleteReference();
+            }
+            this->arrayBuffer->addReference();
+         }
 
          this->syncJavaArrayLength(jenv);
          this->syncSizeInBytes(jenv);
       }
    } else if (this->isAparapiBuffer()) {
+      AparapiBuffer* oldBuffer = this->aparapiBuffer;
       this->aparapiBuffer = bufferManager->getAparapiBufferFor(jenv, javaArg, type);
+
+      if (oldBuffer != this->aparapiBuffer) {
+         bufferManager->replacedAparapiBuffer = true;
+         if (oldBuffer != NULL) {
+            oldBuffer->deleteReference();
+         }
+         this->aparapiBuffer->addReference();
+      }
    }
 }
 
