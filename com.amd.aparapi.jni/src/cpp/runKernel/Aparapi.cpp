@@ -43,6 +43,7 @@
 
 #include "Aparapi.h"
 #include "Config.h"
+#include "KernelRunnerContext.h"
 #include "ProfileInfo.h"
 #include "ArrayBuffer.h"
 #include "AparapiBuffer.h"
@@ -53,11 +54,8 @@
 #include <algorithm>
 #include <list>
 
+std::list<KernelRunnerContext*> kernelRunnerContextList;
 bool isInitialized = false;
-cl_device_id deviceId = NULL;
-cl_device_type deviceType = NULL;
-cl_context context = NULL;
-cl_command_queue commandQueue = NULL;
 
 void initialize(JNIEnv* jenv) {
    if (isInitialized) return;
@@ -67,6 +65,60 @@ void initialize(JNIEnv* jenv) {
       config = new Config(jenv);
    }
 }
+
+JNI_JAVA(jlong, KernelRunnerJNI, initKernelRunnerJNI)
+   (JNIEnv *jenv, jobject jobj, jobject openCLDeviceObject, jint flags) {
+      if (openCLDeviceObject == NULL){
+         fprintf(stderr, "no device object!\n");
+      }
+
+      KernelRunnerContext* context = KernelRunnerContext::contextFor(jenv, openCLDeviceObject, flags, config);
+
+      std::list<KernelRunnerContext*>::iterator it = kernelRunnerContextList.begin();
+      kernelRunnerContextList.insert(it, context);
+
+      commandQueueList.add(context->commandQueue, __LINE__, __FILE__);
+
+      return (jlong) context;
+}
+
+JNI_JAVA(jlong, KernelRunnerJNI, initKernelJNI)
+   (JNIEnv *jenv, jobject jobj, long kernelRunnerHandle, jobject kernelObject) {
+      KernelRunnerContext* kernelRunnerContext = KernelRunnerContext::getKernelRunnerContext(kernelRunnerHandle);
+
+      cl_int status = CL_SUCCESS;
+      KernelContext* kernelContext = new KernelContext(jenv, kernelObject);
+
+      return((jlong)kernelContext);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////
+
+
+
+
+
+cl_device_id deviceId = NULL;
+cl_device_type deviceType = NULL;
+cl_context context = NULL;
+cl_command_queue commandQueue = NULL;
+
+
 
 void dispose(JNIEnv* jenv) {
    cl_int status = CL_SUCCESS;
@@ -195,23 +247,6 @@ JNI_JAVA(jint, KernelRunnerJNI, disposeJNI)
       
       return(status);
    }
-
-/*
-void idump(const char *str, void *ptr, int size){
-   int * iptr = (int *)ptr;
-   for (unsigned i=0; i<size/sizeof(int); i++){
-      fprintf(stderr, "%s%4d %d\n", str, i, iptr[i]);
-   }
-}
-
-void fdump(const char *str, void *ptr, int size){
-   float * fptr = (float *)ptr;
-   for (unsigned i=0; i<size/sizeof(float); i++){
-      fprintf(stderr, "%s%4d %6.2f\n", str, i, fptr[i]);
-   }
-}
-*/
-
 
 jint writeProfileInfo(KernelContext* kernelContext){
    cl_ulong currSampleBaseTime = -1;
@@ -943,6 +978,7 @@ JNI_JAVA(jint, KernelRunnerJNI, runKernelJNI)
 
 
 // we return the KernelContext from here 
+/*
 JNI_JAVA(jlong, KernelRunnerJNI, initJNI)
    (JNIEnv *jenv, jobject jobj, jobject kernelObject, jobject openCLDeviceObject, jint flags) {
 
@@ -961,6 +997,7 @@ JNI_JAVA(jlong, KernelRunnerJNI, initJNI)
          return(0L);
       }
    }
+   */
 
 
 void writeProfile(JNIEnv* jenv, KernelContext* kernelContext) {

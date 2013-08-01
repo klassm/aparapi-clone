@@ -238,6 +238,7 @@
     <ClInclude Include="src\cpp\runKernel\GPUElement.h" />
     <ClInclude Include="src\cpp\runKernel\KernelContext.h" />
     <ClInclude Include="src\cpp\runKernel\KernelArg.h" />
+    <ClInclude Include="src\cpp\runKernel\KernelRunnerContext.h" />
     <ClInclude Include="src\cpp\runKernel\List.h" />
     <ClInclude Include="src\cpp\runKernel\ProfileInfo.h" />
     <ClInclude Include="src\cpp\runKernel\Range.h" />
@@ -259,6 +260,7 @@
     <ClCompile Include="src\cpp\runKernel\GPUElement.cpp" />
     <ClCompile Include="src\cpp\runKernel\KernelContext.cpp" />
     <ClCompile Include="src\cpp\runKernel\KernelArg.cpp" />
+    <ClCompile Include="src\cpp\runKernel\KernelRunnerContext.cpp" />
     <ClCompile Include="src\cpp\runKernel\ProfileInfo.cpp" />
     <ClCompile Include="src\cpp\runKernel\Range.cpp" />
   </ItemGroup>

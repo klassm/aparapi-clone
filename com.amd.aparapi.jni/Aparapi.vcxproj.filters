@@ -102,6 +102,9 @@
     <ClInclude Include="src\cpp\runKernel\KernelContext.h">
       <Filter>Source Files\runKernel</Filter>
     </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\KernelRunnerContext.h">
+      <Filter>Source Files\runKernel</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\cpp\agent.cpp">
@@ -156,6 +159,9 @@
       <Filter>Source Files\gpuElement</Filter>
     </ClCompile>
     <ClCompile Include="src\cpp\runKernel\KernelContext.cpp">
+      <Filter>Source Files\runKernel</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\KernelRunnerContext.cpp">
       <Filter>Source Files\runKernel</Filter>
     </ClCompile>
   </ItemGroup>
