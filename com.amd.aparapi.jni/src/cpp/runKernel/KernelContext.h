@@ -43,7 +43,6 @@ public:
     */
    void unpinAll(JNIEnv* jenv);
 
-   cl_int setLocalAparapiBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose, KernelArg *kernelArg);
    cl_int setLocalBufferArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose, KernelArg *kernelArg);
 };
 

@@ -61,6 +61,8 @@ class ArrayBuffer: public GPUElement {
       void unpinAbort(JNIEnv *jenv);
       void unpinCommit(JNIEnv *jenv);
       void pin(JNIEnv *jenv);
+
+      void* getDataPointer();
 };
 
 #endif // ARRAYBUFFER_H

@@ -126,6 +126,8 @@ public:
       void inflateDouble3D(JNIEnv *env, KernelArg* arg);
 
       jobject getJavaObject(JNIEnv* env, KernelArg* arg);
+
+      void* getDataPointer();
 };
 
 #endif // ARRAYBUFFER_H

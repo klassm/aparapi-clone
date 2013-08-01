@@ -17,8 +17,8 @@ jfieldID KernelArg::numElementsFieldID=0;
 
 KernelArg::KernelArg(JNIEnv *jenv, jobject argObj, KernelContext *_kernelContext):
    argObj(argObj),
-   arrayBuffer(NULL),
-   aparapiBuffer(NULL),
+   buffer(NULL),
+   //aparapiBuffer(NULL),
    kernelContext(_kernelContext)
    {
       javaArg = jenv->NewGlobalRef(argObj);   // save a global ref to the java Arg Object
@@ -161,42 +161,41 @@ void KernelArg::updateReference(JNIEnv *jenv, BufferManager* bufferManager) {
    if (this->isArray()) {
       jarray newRef = (jarray)jenv->GetObjectField(this->javaArg, KernelArg::javaArrayFieldID);
       if (newRef == NULL) {
-         this->arrayBuffer = NULL;
+         this->buffer = NULL;
          return;
       }
 
       bool doUpdate = false;
-      if (this->arrayBuffer == NULL) {
+      if (this->buffer == NULL) {
          doUpdate = true;
-      } else if (!jenv->IsSameObject(newRef, this->arrayBuffer->javaObject)) {
+      } else if (!jenv->IsSameObject(newRef, this->buffer->javaObject)) {
          doUpdate = true;
-
       }
 
       if (doUpdate) {
-         ArrayBuffer* oldBuffer = this->arrayBuffer;
-         this->arrayBuffer = bufferManager->getArrayBufferFor(jenv, newRef);
-         if (oldBuffer != arrayBuffer) {
+         GPUElement* oldBuffer = this->buffer;
+         this->buffer = bufferManager->getArrayBufferFor(jenv, newRef);
+         if (oldBuffer != buffer) {
             bufferManager->replacedArrayBuffer = true;
             if (oldBuffer != NULL) {
                oldBuffer->deleteReference();
             }
-            this->arrayBuffer->addReference();
+            this->buffer->addReference();
          }
 
          this->syncJavaArrayLength(jenv);
          this->syncSizeInBytes(jenv);
       }
    } else if (this->isAparapiBuffer()) {
-      AparapiBuffer* oldBuffer = this->aparapiBuffer;
-      this->aparapiBuffer = bufferManager->getAparapiBufferFor(jenv, javaArg, type);
+      GPUElement* oldBuffer = this->buffer;
+      this->buffer = bufferManager->getAparapiBufferFor(jenv, javaArg, type);
 
-      if (oldBuffer != this->aparapiBuffer) {
+      if (oldBuffer != this->buffer) {
          bufferManager->replacedAparapiBuffer = true;
          if (oldBuffer != NULL) {
             oldBuffer->deleteReference();
          }
-         this->aparapiBuffer->addReference();
+         this->buffer->addReference();
       }
    }
 }

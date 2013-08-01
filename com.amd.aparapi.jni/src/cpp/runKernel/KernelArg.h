@@ -6,6 +6,7 @@
 #include "JNIHelper.h"
 #include "ArrayBuffer.h"
 #include "AparapiBuffer.h"
+#include "GPUElement.h"
 #include "com_amd_aparapi_internal_jni_KernelRunnerJNI.h"
 #include "Config.h"
 #include "BufferManager.h"
@@ -70,8 +71,9 @@ class KernelArg{
       char *name;        // used for debugging printfs
       jint type;         // a bit mask determining the type of this arg
 
-      ArrayBuffer *arrayBuffer;
-      AparapiBuffer *aparapiBuffer;
+      GPUElement* buffer;
+      //ArrayBuffer *arrayBuffer;
+      //AparapiBuffer *aparapiBuffer;
 
       // Uses KernelContext so cant inline here see below
       KernelArg(JNIEnv *jenv, jobject argObj, KernelContext *kernelContext);
@@ -86,12 +88,18 @@ class KernelArg{
        */
       void updateReference(JNIEnv *jenv, BufferManager* bufferManager);
 
-      void unpinAbort(JNIEnv *jenv){
-         arrayBuffer->unpinAbort(jenv);
+      void unpinAbort(JNIEnv *jenv) {
+         if (this->isArray()) {
+            ((ArrayBuffer*)this->buffer)->unpinAbort(jenv);
+         }
       }
+
       void unpinCommit(JNIEnv *jenv){
-         arrayBuffer->unpinCommit(jenv);
+         if (this->isArray()) {
+            ((ArrayBuffer*)this->buffer)->unpinCommit(jenv);
+         }
       }
+
       void unpin(JNIEnv *jenv){
          //if  (value.ref.isPinned == JNI_FALSE){		 
          //     fprintf(stdout, "why are we unpinning buffer %s! isPinned = JNI_TRUE\n", name);
@@ -107,7 +115,9 @@ class KernelArg{
          }
       }
       void pin(JNIEnv *jenv){
-         arrayBuffer->pin(jenv);
+         if (this->isArray()) {
+            ((ArrayBuffer*)this->buffer)->pin(jenv);
+         }
       }
 
       int isArray(){
@@ -183,10 +193,14 @@ class KernelArg{
          type = jenv->GetIntField(javaArg, typeFieldID);
       }
       void syncSizeInBytes(JNIEnv* jenv){
-         arrayBuffer->lengthInBytes = jenv->GetIntField(javaArg, sizeInBytesFieldID);
+         if (this->isArray()) {
+            ((ArrayBuffer*)this->buffer)->lengthInBytes = jenv->GetIntField(javaArg, sizeInBytesFieldID);
+         }
       }
       void syncJavaArrayLength(JNIEnv* jenv){
-         arrayBuffer->length = jenv->GetIntField(javaArg, numElementsFieldID);
+         if (this->isArray()) {
+            ((ArrayBuffer*)this->buffer)->length = jenv->GetIntField(javaArg, numElementsFieldID);
+         }
       }
       void clearExplicitBufferBit(JNIEnv* jenv){
          type &= ~com_amd_aparapi_internal_jni_KernelRunnerJNI_ARG_EXPLICIT_WRITE;

@@ -266,11 +266,7 @@ int processArgs(JNIEnv* jenv, KernelRunnerContext* kernelRunnerContext, KernelCo
  * @throws CLException
  */
 void processObject(JNIEnv* jenv, KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx) {
-    if(arg->isArray()) {
-       arg->arrayBuffer->process(jenv, kernelRunnerContext->context, kernelContext, arg, argPos, argIdx);
-    } else if(arg->isAparapiBuffer()) {
-       arg->aparapiBuffer->process(jenv, kernelRunnerContext->context, kernelContext, arg, argPos, argIdx);
-    }
+    arg->buffer->process(jenv, kernelRunnerContext->context, kernelContext, arg, argPos, argIdx);
 }
 
 /**
@@ -297,13 +293,9 @@ void updateWriteEvents(JNIEnv* jenv, KernelRunnerContext* kernelRunnerContext, K
       kernelContext->writeEventArgs[writeEventCount] = argIdx;
    }
 
-   if(arg->isArray()) {
-      status = clEnqueueWriteBuffer(kernelRunnerContext->commandQueue, arg->arrayBuffer->mem, CL_FALSE, 0, 
-         arg->arrayBuffer->lengthInBytes, arg->arrayBuffer->addr, 0, NULL, &(kernelContext->writeEvents[writeEventCount]));
-   } else if(arg->isAparapiBuffer()) {
-      status = clEnqueueWriteBuffer(kernelRunnerContext->commandQueue, arg->aparapiBuffer->mem, CL_FALSE, 0, 
-         arg->aparapiBuffer->lengthInBytes, arg->aparapiBuffer->data, 0, NULL, &(kernelContext->writeEvents[writeEventCount]));
-   }
+   status = clEnqueueWriteBuffer(kernelRunnerContext->commandQueue, arg->buffer->mem, CL_FALSE, 0, 
+      arg->buffer->lengthInBytes, arg->buffer->getDataPointer(), 0, NULL, &(kernelContext->writeEvents[writeEventCount]));
+
    if(status != CL_SUCCESS) throw CLException(status,"clEnqueueWriteBuffer");
 
    if (config->isTrackingOpenCLResources()){
@@ -335,6 +327,7 @@ void processLocal(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, in
  * @throws CLException
  */
 void processLocalArray(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx) {
+   ArrayBuffer* buffer = (ArrayBuffer*) arg->buffer;
 
    cl_int status = CL_SUCCESS;
    // what if local buffer size has changed?  We need a check for resize here.
@@ -346,10 +339,10 @@ void processLocalArray(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* ar
       if (arg->usesArrayLength()) {
          arg->syncJavaArrayLength(jenv);
 
-         status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(jint), &(arg->arrayBuffer->length));
+         status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(jint), &(buffer->length));
 
          if (config->isVerbose()){
-            fprintf(stderr, "runKernel arg %d %s, javaArrayLength = %d\n", argIdx, arg->name, arg->arrayBuffer->length);
+            fprintf(stderr, "runKernel arg %d %s, javaArrayLength = %d\n", argIdx, arg->name, buffer->length);
          }
 
          if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (array length)");
@@ -375,6 +368,7 @@ void processLocalArray(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* ar
  * @throws CLException
  */
 void processLocalBuffer(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx) {
+   AparapiBuffer* buffer = (AparapiBuffer*) arg->buffer;
 
    cl_int status = CL_SUCCESS;
    // what if local buffer size has changed?  We need a check for resize here.
@@ -386,9 +380,9 @@ void processLocalBuffer(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* a
       if (arg->usesArrayLength()) {
          arg->syncJavaArrayLength(jenv);
 
-         for(int i = 0; i < arg->aparapiBuffer->numDims; i++)
+         for(int i = 0; i <buffer->numDims; i++)
          {
-             int length = arg->aparapiBuffer->lens[i];
+             int length = buffer->lens[i];
              status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(jint), &length);
              if (config->isVerbose()){
                 fprintf(stderr, "runKernel arg %d %s, javaArrayLength = %d\n", argIdx, arg->name, length);
@@ -399,7 +393,7 @@ void processLocalBuffer(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* a
    } else {
       // Keep the arg position in sync if no updates were required
       if (arg->usesArrayLength()) {
-         argPos += arg->aparapiBuffer->numDims;
+         argPos += buffer->numDims;
       }
    }
 }
@@ -622,15 +616,13 @@ int getReadEvents(JNIEnv* jenv, KernelRunnerContext* kernelRunnerContext, Kernel
             fprintf(stderr, "reading buffer %d %s\n", i, arg->name);
          }
 
-         if(arg->isArray()) {
-            status = clEnqueueReadBuffer(kernelRunnerContext->commandQueue, arg->arrayBuffer->mem, 
-                CL_FALSE, 0, arg->arrayBuffer->lengthInBytes, arg->arrayBuffer->addr, 1, 
-                kernelContext->executeEvents, &(kernelContext->readEvents[readEventCount]));
-         } else if(arg->isAparapiBuffer()) {
-            status = clEnqueueReadBuffer(kernelRunnerContext->commandQueue, arg->aparapiBuffer->mem, 
-                CL_TRUE, 0, arg->aparapiBuffer->lengthInBytes, arg->aparapiBuffer->data, 1, 
-                kernelContext->executeEvents, &(kernelContext->readEvents[readEventCount]));
-            arg->aparapiBuffer->inflate(jenv, arg);
+         status = clEnqueueReadBuffer(kernelRunnerContext->commandQueue, arg->buffer->mem, 
+            CL_FALSE, 0, arg->buffer->lengthInBytes, arg->buffer->getDataPointer(), 1, 
+            kernelContext->executeEvents, &(kernelContext->readEvents[readEventCount]));
+
+         if(arg->isAparapiBuffer()) {
+            AparapiBuffer* buffer = (AparapiBuffer*) arg->buffer;
+            buffer->inflate(jenv, arg);
          }
 
          if (status != CL_SUCCESS) throw CLException(status, "clEnqueueReadBuffer()");
@@ -671,7 +663,7 @@ void waitForReadEvents(KernelContext* kernelContext, int readEventCount, int pas
 
          if (config->isProfilingEnabled()) {
 
-            status = profile(&kernelContext->args[kernelContext->readEventArgs[i]]->arrayBuffer->read, 
+            status = profile(&kernelContext->args[kernelContext->readEventArgs[i]]->buffer->read, 
                &kernelContext->readEvents[i], 0,kernelContext->args[kernelContext->readEventArgs[i]]->name, kernelContext->profileBaseTime);
             if (status != CL_SUCCESS) throw CLException(status, "");
          }
@@ -721,7 +713,7 @@ void checkEvents(JNIEnv* jenv, KernelContext* kernelContext, int writeEventCount
    for (int i = 0; i < writeEventCount; i++) {
 
       if (config->isProfilingEnabled()) {
-         profile(&kernelContext->args[kernelContext->writeEventArgs[i]]->arrayBuffer->write, &kernelContext->writeEvents[i], 2, kernelContext->args[kernelContext->writeEventArgs[i]]->name, kernelContext->profileBaseTime);
+         profile(&kernelContext->args[kernelContext->writeEventArgs[i]]->buffer->write, &kernelContext->writeEvents[i], 2, kernelContext->args[kernelContext->writeEventArgs[i]]->name, kernelContext->profileBaseTime);
       }
 
       status = clReleaseEvent(kernelContext->writeEvents[i]);
@@ -770,15 +762,15 @@ jint writeProfileInfo(KernelContext* kernelContext){
 
          // Initialize the base time for this sample
          if (currSampleBaseTime == -1) {
-            currSampleBaseTime = arg->arrayBuffer->write.queued;
+            currSampleBaseTime = arg->buffer->write.queued;
          } 
          fprintf(kernelContext->profileFile, "%d write %s,", pos++, arg->name);
 
          fprintf(kernelContext->profileFile, "%lu,%lu,%lu,%lu,",  
-        	(unsigned long)(arg->arrayBuffer->write.queued - currSampleBaseTime)/1000,
-        	(unsigned long)(arg->arrayBuffer->write.submit - currSampleBaseTime)/1000,
-        	(unsigned long)(arg->arrayBuffer->write.start - currSampleBaseTime)/1000,
-        	(unsigned long)(arg->arrayBuffer->write.end - currSampleBaseTime)/1000);
+        	(unsigned long)(arg->buffer->write.queued - currSampleBaseTime)/1000,
+        	(unsigned long)(arg->buffer->write.submit - currSampleBaseTime)/1000,
+        	(unsigned long)(arg->buffer->write.start - currSampleBaseTime)/1000,
+        	(unsigned long)(arg->buffer->write.end - currSampleBaseTime)/1000);
       }
    }
 
@@ -809,16 +801,16 @@ jint writeProfileInfo(KernelContext* kernelContext){
 
             // Initialize the base time for this sample
             if (currSampleBaseTime == -1) {
-               currSampleBaseTime = arg->arrayBuffer->read.queued;
+               currSampleBaseTime = arg->buffer->read.queued;
             }
 
             fprintf(kernelContext->profileFile, "%d read %s,", pos++, arg->name);
 
             fprintf(kernelContext->profileFile, "%lu,%lu,%lu,%lu,",  
-            	(unsigned long)(arg->arrayBuffer->read.queued - currSampleBaseTime)/1000,
-            	(unsigned long)(arg->arrayBuffer->read.submit - currSampleBaseTime)/1000,
-            	(unsigned long)(arg->arrayBuffer->read.start - currSampleBaseTime)/1000,
-            	(unsigned long)(arg->arrayBuffer->read.end - currSampleBaseTime)/1000);
+            	(unsigned long)(arg->buffer->read.queued - currSampleBaseTime)/1000,
+            	(unsigned long)(arg->buffer->read.submit - currSampleBaseTime)/1000,
+            	(unsigned long)(arg->buffer->read.start - currSampleBaseTime)/1000,
+            	(unsigned long)(arg->buffer->read.end - currSampleBaseTime)/1000);
          }
       }
    }
@@ -842,7 +834,8 @@ KernelArg* getArgForBuffer(JNIEnv* jenv, KernelContext* kernelContext, jobject b
       for (jint i = 0; returnArg == NULL && i < kernelContext->argc; i++){ 
          KernelArg *arg = kernelContext->args[i];
          if (arg->isArray()) {
-            jboolean isSame = jenv->IsSameObject(buffer, arg->arrayBuffer->javaObject);
+            ArrayBuffer* arrayBuffer = (ArrayBuffer*) arg->buffer;
+            jboolean isSame = jenv->IsSameObject(buffer, arrayBuffer->javaObject);
             if (isSame){
                if (config->isVerbose()){
                   fprintf(stderr, "matched arg '%s'\n", arg->name);
@@ -854,7 +847,8 @@ KernelArg* getArgForBuffer(JNIEnv* jenv, KernelContext* kernelContext, jobject b
                }
             }
          } else if(arg->isAparapiBuffer()) {
-            jboolean isSame = jenv->IsSameObject(buffer, arg->aparapiBuffer->getJavaObject(jenv,arg));
+            AparapiBuffer* aparapiBuffer = (AparapiBuffer*) arg->buffer;
+            jboolean isSame = jenv->IsSameObject(buffer, aparapiBuffer->getJavaObject(jenv,arg));
             if (isSame) {
                if (config->isVerbose()) {
                   fprintf(stderr, "matched arg '%s'\n", arg->name);
@@ -1093,18 +1087,19 @@ JNI_JAVA(jint, KernelRunnerJNI, getJNI)
                fprintf(stderr, "explicitly reading buffer %s\n", arg->name);
             }
             if(arg->isArray()) {
+               ArrayBuffer* arrayBuffer = (ArrayBuffer*) arg->buffer;
                arg->pin(jenv);
 
                try {
-                  status = clEnqueueReadBuffer(kernelRunnerContext->commandQueue, arg->arrayBuffer->mem, 
+                  status = clEnqueueReadBuffer(kernelRunnerContext->commandQueue, arg->buffer->mem, 
                                                 CL_FALSE, 0, 
-                                                arg->arrayBuffer->lengthInBytes,
-                                                arg->arrayBuffer->addr , 0, NULL, 
+                                                arg->buffer->lengthInBytes,
+                                                arrayBuffer->addr , 0, NULL, 
                                                 &context->readEvents[0]);
                   if (config->isVerbose()){
                      fprintf(stderr, "explicitly read %s ptr=%p len=%d\n", 
-                              arg->name, arg->arrayBuffer->addr, 
-                              arg->arrayBuffer->lengthInBytes );
+                              arg->name, arrayBuffer->addr, 
+                              arg->buffer->lengthInBytes );
                   }
                   if (status != CL_SUCCESS) throw CLException(status, "clEnqueueReadBuffer()");
 
@@ -1112,7 +1107,7 @@ JNI_JAVA(jint, KernelRunnerJNI, getJNI)
                   if (status != CL_SUCCESS) throw CLException(status, "clWaitForEvents");
 
                   if (config->isProfilingEnabled()) {
-                     status = profile(&arg->arrayBuffer->read, &context->readEvents[0], 0,
+                     status = profile(&arg->buffer->read, &context->readEvents[0], 0,
                                        arg->name, context->profileBaseTime);
                      if (status != CL_SUCCESS) throw CLException(status, "profile ");
                   }
@@ -1130,17 +1125,18 @@ JNI_JAVA(jint, KernelRunnerJNI, getJNI)
                   return status;
                }
             } else if(arg->isAparapiBuffer()) {
+               AparapiBuffer* aparapiBuffer = (AparapiBuffer*) arg->buffer;
 
                try {
-                  status = clEnqueueReadBuffer(kernelRunnerContext->commandQueue, arg->aparapiBuffer->mem, 
+                  status = clEnqueueReadBuffer(kernelRunnerContext->commandQueue, arg->buffer->mem, 
                                                 CL_FALSE, 0, 
-                                                arg->aparapiBuffer->lengthInBytes,
-                                                arg->aparapiBuffer->data, 0, NULL, 
+                                                arg->buffer->lengthInBytes,
+                                                aparapiBuffer->data, 0, NULL, 
                                                 &context->readEvents[0]);
                   if (config->isVerbose()){
                      fprintf(stderr, "explicitly read %s ptr=%p len=%d\n", 
-                              arg->name, arg->aparapiBuffer->data, 
-                              arg->aparapiBuffer->lengthInBytes );
+                              arg->name, aparapiBuffer->data, 
+                              arg->buffer->lengthInBytes );
                   }
                   if (status != CL_SUCCESS) throw CLException(status, "clEnqueueReadBuffer()");
 
@@ -1148,7 +1144,7 @@ JNI_JAVA(jint, KernelRunnerJNI, getJNI)
                   if (status != CL_SUCCESS) throw CLException(status, "clWaitForEvents");
 
                   if (config->isProfilingEnabled()) {
-                     status = profile(&arg->aparapiBuffer->read, &context->readEvents[0], 0,
+                     status = profile(&arg->buffer->read, &context->readEvents[0], 0,
                                        arg->name, context->profileBaseTime);
                      if (status != CL_SUCCESS) throw CLException(status, "profile "); 
                   }
@@ -1156,7 +1152,7 @@ JNI_JAVA(jint, KernelRunnerJNI, getJNI)
                   status = clReleaseEvent(context->readEvents[0]);
                   if (status != CL_SUCCESS) throw CLException(status, "clReleaseEvent() read event");
 
-                  arg->aparapiBuffer->inflate(jenv,arg);
+                  aparapiBuffer->inflate(jenv,arg);
 
                //something went wrong print the error and exit
                } catch(CLException& cle) {
@@ -1239,8 +1235,8 @@ JNI_JAVA(jobject, KernelRunnerJNI, getProfileInfoJNI)
             for (jint i = 0; i < kernelContext->argc; i++){ 
                KernelArg *arg = kernelContext->args[i];
                if (arg->isArray()){
-                  if (arg->isMutableByKernel() && arg->arrayBuffer->write.valid){
-                     jobject writeProfileInfo = arg->arrayBuffer->write.createProfileInfoInstance(jenv);
+                  if (arg->isMutableByKernel() && arg->buffer->write.valid){
+                     jobject writeProfileInfo = arg->buffer->write.createProfileInfoInstance(jenv);
                      JNIHelper::callVoid(jenv, returnList, "add", ArgsBooleanReturn(ObjectClassArg), writeProfileInfo);
                   }
                }
@@ -1254,8 +1250,8 @@ JNI_JAVA(jobject, KernelRunnerJNI, getProfileInfoJNI)
             for (jint i = 0; i < kernelContext->argc; i++){ 
                KernelArg *arg = kernelContext->args[i];
                if (arg->isArray()){
-                  if (arg->isReadByKernel() && arg->arrayBuffer->read.valid){
-                     jobject readProfileInfo = arg->arrayBuffer->read.createProfileInfoInstance(jenv);
+                  if (arg->isReadByKernel() && arg->buffer->read.valid){
+                     jobject readProfileInfo = arg->buffer->read.createProfileInfoInstance(jenv);
                      JNIHelper::callVoid(jenv, returnList, "add", ArgsBooleanReturn(ObjectClassArg), readProfileInfo);
                   }
                }

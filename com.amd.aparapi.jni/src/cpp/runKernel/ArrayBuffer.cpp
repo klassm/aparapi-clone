@@ -68,14 +68,14 @@ void ArrayBuffer::process(JNIEnv* jenv, cl_context context, KernelContext* kerne
    cl_int status = CL_SUCCESS;
 
    if (config->isProfilingEnabled()){
-      arg->arrayBuffer->read.valid = false;
-      arg->arrayBuffer->write.valid = false;
+      this->read.valid = false;
+      this->write.valid = false;
    }
 
 
    // this uses different JNI calls for arrays vs. directBufs
    
-   void * prevAddr =  arg->arrayBuffer->addr;
+   void * prevAddr =  this->addr;
 
    // pin the arrays so that GC does not move them during the call
    // get the C memory address for the region being transferred
@@ -133,10 +133,10 @@ void ArrayBuffer::updateArray(JNIEnv* jenv, cl_context context, KernelContext* k
    if (arg->isReadByKernel() && arg->isMutableByKernel()) mask |= CL_MEM_READ_WRITE;
    else if (arg->isReadByKernel() && !arg->isMutableByKernel()) mask |= CL_MEM_READ_ONLY;
    else if (arg->isMutableByKernel()) mask |= CL_MEM_WRITE_ONLY;
-   arg->arrayBuffer->memMask = mask;
+   this->memMask = mask;
 
    if (config->isVerbose()) {
-      strcpy(arg->arrayBuffer->memSpec,"CL_MEM_USE_HOST_PTR");
+      strcpy(this->memSpec,"CL_MEM_USE_HOST_PTR");
       if (mask & CL_MEM_READ_WRITE) strcat(this->memSpec,"|CL_MEM_READ_WRITE");
       if (mask & CL_MEM_READ_ONLY) strcat(this->memSpec,"|CL_MEM_READ_ONLY");
       if (mask & CL_MEM_WRITE_ONLY) strcat(this->memSpec,"|CL_MEM_WRITE_ONLY");
@@ -167,4 +167,8 @@ void ArrayBuffer::updateArray(JNIEnv* jenv, cl_context context, KernelContext* k
          fprintf(stderr, "runKernel arg %d %s, length = %d\n", argIdx, arg->name, this->length);
       }
    }
+}
+
+void* ArrayBuffer::getDataPointer() {
+   return addr;
 }

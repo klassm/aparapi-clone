@@ -1557,16 +1557,16 @@ void AparapiBuffer::process(JNIEnv* jenv, cl_context context, KernelContext* ker
    cl_int status = CL_SUCCESS;
 
    if (config->isProfilingEnabled()){
-      arg->aparapiBuffer->read.valid = false;
-      arg->aparapiBuffer->write.valid = false;
+      this->read.valid = false;
+      this->write.valid = false;
    }
 
    if (config->isVerbose()) {
       fprintf(stderr, "runKernel: arrayOrBuf addr=%p, ref.mem=%p\n",
-            arg->aparapiBuffer->data,
-            arg->aparapiBuffer->mem);
-      fprintf(stderr, "at memory addr %p, contents: ", arg->aparapiBuffer->data);
-      unsigned char *pb = (unsigned char *) arg->aparapiBuffer->data;
+           this->data,
+           this->mem);
+      fprintf(stderr, "at memory addr %p, contents: ", this->data);
+      unsigned char *pb = (unsigned char *) this->data;
       for (int k=0; k<8; k++) {
          fprintf(stderr, "%02x ", pb[k]);
       }
@@ -1579,60 +1579,62 @@ void AparapiBuffer::process(JNIEnv* jenv, cl_context context, KernelContext* ker
       }
    }
 
-   if (arg->aparapiBuffer->mem != 0) {
+   if (this->mem != 0) {
       if (config->isTrackingOpenCLResources()) {
-         memList.remove((cl_mem)arg->aparapiBuffer->mem, __LINE__, __FILE__);
+         memList.remove((cl_mem)this->mem, __LINE__, __FILE__);
       }
-      status = clReleaseMemObject((cl_mem)arg->aparapiBuffer->mem);
+      status = clReleaseMemObject((cl_mem)this->mem);
       //fprintf(stdout, "dispose arg %d %0lx\n", i, arg->aparapiBuffer->mem);
 
       //this needs to be reported, but we can still keep going
       CLException::checkCLError(status, "clReleaseMemObject()");
 
-      arg->aparapiBuffer->mem = (cl_mem)0;
+      this->mem = (cl_mem)0;
    }
 
    updateBuffer(jenv, context, kernelContext, arg, argPos, argIdx);
 }
 
 void AparapiBuffer::updateBuffer(JNIEnv* jenv, cl_context context, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx) {
-
-   AparapiBuffer* buffer = arg->aparapiBuffer;
    cl_int status = CL_SUCCESS;
    cl_uint mask = CL_MEM_USE_HOST_PTR;
    if (arg->isReadByKernel() && arg->isMutableByKernel()) mask |= CL_MEM_READ_WRITE;
    else if (arg->isReadByKernel() && !arg->isMutableByKernel()) mask |= CL_MEM_READ_ONLY;
    else if (arg->isMutableByKernel()) mask |= CL_MEM_WRITE_ONLY;
-   buffer->memMask = mask;
+   this->memMask = mask;
 
-   buffer->mem = clCreateBuffer(context, buffer->memMask, 
-         buffer->lengthInBytes, buffer->data, &status);
+   this->mem = clCreateBuffer(context, this->memMask, 
+         this->lengthInBytes, this->data, &status);
 
    if(status != CL_SUCCESS) throw CLException(status,"clCreateBuffer");
 
    if (config->isTrackingOpenCLResources()){
-      memList.add(buffer->mem, __LINE__, __FILE__);
+      memList.add(this->mem, __LINE__, __FILE__);
    }
 
-   status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(cl_mem), (void *)&(buffer->mem));
+   status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(cl_mem), (void *)&(this->mem));
    if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (buffer)");
 
    // Add the array length if needed
    if (arg->usesArrayLength()) {
 
-      for(int i = 0; i < buffer->numDims; i++) {
+      for(int i = 0; i < this->numDims; i++) {
          argPos++;
-         status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(cl_uint), &(buffer->lens[i]));
+         status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(cl_uint), &(this->lens[i]));
          if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (buffer length)");
          if (config->isVerbose()){
-            fprintf(stderr, "runKernel arg %d %s, length = %d\n", argIdx, arg->name, buffer->lens[i]);
+            fprintf(stderr, "runKernel arg %d %s, length = %d\n", argIdx, arg->name, this->lens[i]);
          }
          argPos++;
-         status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(cl_uint), &(buffer->dims[i]));
+         status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(cl_uint), &(this->dims[i]));
          if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (buffer dimension)");
          if (config->isVerbose()){
-            fprintf(stderr, "runKernel arg %d %s, dim = %d\n", argIdx, arg->name, buffer->dims[i]);
+            fprintf(stderr, "runKernel arg %d %s, dim = %d\n", argIdx, arg->name, this->dims[i]);
          }
       }
    }
+}
+
+void* AparapiBuffer::getDataPointer() {
+   return data;
 }
