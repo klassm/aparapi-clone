@@ -3,7 +3,7 @@
 
 #include "ArrayBuffer.h"
 #include "AparapiBuffer.h"
-#include <list>
+#include <vector>
 
 /**
  * Class which is responsible for handling all the buffers. It keeps tack of each generated instance
@@ -12,20 +12,10 @@
  */
 class BufferManager {
    public:
-      
+      BufferManager();
+
       bool replacedArrayBuffer;
-      bool createdNewAparapiBuffer;
-
-      /**
-       * Return an Instance of BufferManager.
-       * @return instance
-       */
-      static BufferManager *getInstance();
-
-      /**
-       * Holds a list of jni contexts, representing kernel entry points.
-       */
-      std::list<JNIContext*> jniContextList;
+      bool replacedAparapiBuffer;
 
       /**
        * Get an ArrayBuffer for a matching argObj. If no buffer containing the argObj is found, 
@@ -47,11 +37,9 @@ class BufferManager {
       void cleanUpNonReferencedBuffers(JNIEnv *jenv, bool enforce);
       void cleanUpNonReferencedBuffers(JNIEnv *jenv);
 
-   private:
-      BufferManager();
-      
-      std::list<AparapiBuffer*> aparapiBufferList;
-      std::list<ArrayBuffer*> arrayBufferList;
+   private:    
+      std::vector<AparapiBuffer*> aparapiBufferList;
+      std::vector<ArrayBuffer*> arrayBufferList;
 	   void cleanUp(GPUElement* gpuElement, JNIEnv *jenv);
 
       AparapiBuffer* findAparapiBufferForReference(JNIEnv *jenv, jobject argObj);

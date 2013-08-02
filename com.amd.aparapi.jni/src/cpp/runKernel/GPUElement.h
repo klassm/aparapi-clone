@@ -5,7 +5,7 @@
 #include "ProfileInfo.h"
 
 class KernelArg;
-class JNIContext;
+class KernelContext;
 
 class GPUElement {
 	public:	
@@ -26,7 +26,14 @@ class GPUElement {
 
 		GPUElement();
 
-		virtual void process(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
+      int referenceCount;
+
+      void addReference();
+      void deleteReference();
+      bool hasReferences();
+
+		virtual void process(JNIEnv* jenv, cl_context context, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
+      virtual void* getDataPointer() {return NULL;}
    private:
 };
 #endif

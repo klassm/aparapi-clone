@@ -22,6 +22,9 @@
     <Filter Include="Source Files\gpuElement">
       <UniqueIdentifier>{dfe1bbc2-866d-413b-9d2b-bb5280c3400c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\util">
+      <UniqueIdentifier>{91afdd5f-c816-45fd-9fe2-278e1105af8a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\com_amd_aparapi_KernelRunner.h">
@@ -75,9 +78,6 @@
     <ClInclude Include="src\cpp\runKernel\Config.h">
       <Filter>Source Files\runKernel</Filter>
     </ClInclude>
-    <ClInclude Include="src\cpp\runKernel\JNIContext.h">
-      <Filter>Source Files\runKernel</Filter>
-    </ClInclude>
     <ClInclude Include="src\cpp\runKernel\KernelArg.h">
       <Filter>Source Files\runKernel</Filter>
     </ClInclude>
@@ -101,6 +101,12 @@
     </ClInclude>
     <ClInclude Include="src\cpp\runKernel\BufferManager.h">
       <Filter>Source Files\gpuElement</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\KernelContext.h">
+      <Filter>Source Files\runKernel</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp\runKernel\KernelRunnerContext.h">
+      <Filter>Source Files\runKernel</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -134,9 +140,6 @@
     <ClCompile Include="src\cpp\runKernel\Config.cpp">
       <Filter>Source Files\runKernel</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\runKernel\JNIContext.cpp">
-      <Filter>Source Files\runKernel</Filter>
-    </ClCompile>
     <ClCompile Include="src\cpp\runKernel\KernelArg.cpp">
       <Filter>Source Files\runKernel</Filter>
     </ClCompile>
@@ -157,6 +160,12 @@
     </ClCompile>
     <ClCompile Include="src\cpp\runKernel\BufferManager.cpp">
       <Filter>Source Files\gpuElement</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\KernelContext.cpp">
+      <Filter>Source Files\runKernel</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\runKernel\KernelRunnerContext.cpp">
+      <Filter>Source Files\runKernel</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

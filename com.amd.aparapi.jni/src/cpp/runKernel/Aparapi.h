@@ -44,56 +44,36 @@
 #include "CLException.h"
 #include "Range.h"
 #include "KernelArg.h"
-#include "JNIContext.h"
-
-//compiler dependant code
-int enqueueMarker(cl_command_queue commandQueue, cl_event* firstEvent);
-jint getProcess();
-
-/*
-void idump(const char *str, void *ptr, int size);
-
-void fdump(const char *str, void *ptr, int size);
-*/
-
-jint writeProfileInfo(JNIContext* jniContext);
-
-cl_int profile(ProfileInfo *profileInfo, cl_event *event, jint type, char* name, cl_ulong profileBaseTime);
-
-jint updateNonPrimitiveReferences(JNIEnv *jenv, jobject jobj, JNIContext* jniContext);
-
-void profileFirstRun(JNIContext* jniContext);
-
-void updateArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-void updateBuffer(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-
-void processObject(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-void processArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-void processBuffer(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-
-void updateWriteEvents(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int argIdx, int& writeEventCount);
-
-void processLocal(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-void processLocalArray(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-void processLocalBuffer(JNIEnv* jenv, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
-
-int processArgs(JNIEnv* jenv, JNIContext* jniContext, int& argPos, int& writeEventCount);
-
-void enqueueKernel(JNIContext* jniContext, Range& range, int passes, int argPos, int writeEventCount);
-
-int getReadEvents(JNIContext* jniContext);
-
-void waitForReadEvents(JNIContext* jniContext, int readEventCount, int passes);
-
-void checkEvents(JNIEnv* jenv, JNIContext* jniContext, int writeEventCount);
-
-void writeProfile(JNIEnv* jenv, JNIContext* jniContext);
-
-KernelArg* getArgForBuffer(JNIEnv* jenv, JNIContext* jniContext, jobject buffer);
+#include "KernelContext.h"
+#include "KernelRunnerContext.h"
 
 void initialize(JNIEnv* jenv);
-void initialize(JNIEnv* jenv, jobject openCLDeviceObject);
-void dispose(JNIEnv* jenv);
 
+// called by buildProgramJNI
+void writeProfile(JNIEnv* jenv, KernelContext* kernelContext);
+jint getProcess();
+
+// called by runKernelJNI
+void profileFirstRun(KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext);
+int enqueueMarker(cl_command_queue commandQueue, cl_event* firstEvent);
+jint updateNonPrimitiveReferences(JNIEnv *jenv, jobject jobj, KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext);
+int processArgs(JNIEnv* jenv, KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext, int& argPos, int& writeEventCount);
+void updateWriteEvents(JNIEnv* jenv, KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext, KernelArg* arg, int argIdx, int& writeEventCount);
+
+void processObject(JNIEnv* jenv, KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
+void processLocal(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
+void processLocalArray(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
+void processLocalBuffer(JNIEnv* jenv, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
+
+void enqueueKernel(KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext, Range& range, int passes, int argPos, int writeEventCount);
+
+cl_int profile(ProfileInfo *profileInfo, cl_event *event, jint type, char* name, cl_ulong profileBaseTime);
+int getReadEvents(JNIEnv* jenv, KernelRunnerContext* kernelRunnerContext, KernelContext* kernelContext);
+void waitForReadEvents(KernelContext* kernelContext, int readEventCount, int passes);
+void checkEvents(JNIEnv* jenv, KernelContext* kernelContext, int writeEventCount);
+jint writeProfileInfo(KernelContext* kernelContext);
+
+// getJNI
+KernelArg* getArgForBuffer(JNIEnv* jenv, KernelContext* kernelContext, jobject buffer);
 
 #endif // APARAPI_H

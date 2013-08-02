@@ -37,7 +37,7 @@
    */
 #define ARRAYBUFFER_SOURCE
 #include "ArrayBuffer.h"
-#include "JNIContext.h"
+#include "KernelContext.h"
 #include "List.h"
 
 ArrayBuffer::ArrayBuffer(JNIEnv* jenv, jobject localReference):
@@ -63,19 +63,19 @@ void ArrayBuffer::pin(JNIEnv *jenv){
    isPinned = JNI_TRUE;
 }
 
-void ArrayBuffer::process(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
+void ArrayBuffer::process(JNIEnv* jenv, cl_context context, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx) {
    
    cl_int status = CL_SUCCESS;
 
    if (config->isProfilingEnabled()){
-      arg->arrayBuffer->read.valid = false;
-      arg->arrayBuffer->write.valid = false;
+      this->read.valid = false;
+      this->write.valid = false;
    }
 
 
    // this uses different JNI calls for arrays vs. directBufs
    
-   void * prevAddr =  arg->arrayBuffer->addr;
+   void * prevAddr =  this->addr;
 
    // pin the arrays so that GC does not move them during the call
    // get the C memory address for the region being transferred
@@ -107,9 +107,9 @@ void ArrayBuffer::process(JNIEnv* jenv, cl_context context, JNIContext* jniConte
       }
    }
 
-   if (jniContext->firstRun || (this->mem == 0) || objectMoved ){
+   if (kernelContext->firstRun || (this->mem == 0) || objectMoved ){
       if (this->mem == 0) {
-         updateArray(jenv, context, jniContext, arg, argPos, argIdx);
+         updateArray(jenv, context, kernelContext, arg, argPos, argIdx);
       }
    } else {
       // Keep the arg position in sync if no updates were required
@@ -120,11 +120,11 @@ void ArrayBuffer::process(JNIEnv* jenv, cl_context context, JNIContext* jniConte
 
    // We do not need to create a new memory each time the buffer is accessed, but we
    // want to set the buffer as kernel arg to each KernelArg it is referenced by!
-   status = clSetKernelArg(jniContext->kernel, argPos, sizeof(cl_mem), (void *)&(this->mem));
+   status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(cl_mem), (void *)&(this->mem));
    if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (array)");
 }
 
-void ArrayBuffer::updateArray(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx) {
+void ArrayBuffer::updateArray(JNIEnv* jenv, cl_context context, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx) {
 
    cl_int status = CL_SUCCESS;
    // if either this is the first run or user changed input array
@@ -133,10 +133,10 @@ void ArrayBuffer::updateArray(JNIEnv* jenv, cl_context context, JNIContext* jniC
    if (arg->isReadByKernel() && arg->isMutableByKernel()) mask |= CL_MEM_READ_WRITE;
    else if (arg->isReadByKernel() && !arg->isMutableByKernel()) mask |= CL_MEM_READ_ONLY;
    else if (arg->isMutableByKernel()) mask |= CL_MEM_WRITE_ONLY;
-   arg->arrayBuffer->memMask = mask;
+   this->memMask = mask;
 
    if (config->isVerbose()) {
-      strcpy(arg->arrayBuffer->memSpec,"CL_MEM_USE_HOST_PTR");
+      strcpy(this->memSpec,"CL_MEM_USE_HOST_PTR");
       if (mask & CL_MEM_READ_WRITE) strcat(this->memSpec,"|CL_MEM_READ_WRITE");
       if (mask & CL_MEM_READ_ONLY) strcat(this->memSpec,"|CL_MEM_READ_ONLY");
       if (mask & CL_MEM_WRITE_ONLY) strcat(this->memSpec,"|CL_MEM_WRITE_ONLY");
@@ -160,11 +160,15 @@ void ArrayBuffer::updateArray(JNIEnv* jenv, cl_context context, JNIContext* jniC
       argPos++;
       arg->syncJavaArrayLength(jenv);
 
-      status = clSetKernelArg(jniContext->kernel, argPos, sizeof(jint), &(this->length));
+      status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(jint), &(this->length));
       if(status != CL_SUCCESS) throw CLException(status,"clSetKernelArg (array length)");
 
       if (config->isVerbose()){
          fprintf(stderr, "runKernel arg %d %s, length = %d\n", argIdx, arg->name, this->length);
       }
    }
+}
+
+void* ArrayBuffer::getDataPointer() {
+   return addr;
 }

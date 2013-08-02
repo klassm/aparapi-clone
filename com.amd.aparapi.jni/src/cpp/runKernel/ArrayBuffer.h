@@ -45,7 +45,7 @@
 class ArrayBuffer: public GPUElement {
       
    private:
-      void updateArray(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
+      void updateArray(JNIEnv* jenv, cl_context context, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
 
    public:
       cl_uint length;           // the number of elements for arrays (used only when ARRAYLENGTH bit is set for this arg) 
@@ -56,11 +56,13 @@ class ArrayBuffer: public GPUElement {
 
       ArrayBuffer(JNIEnv* jenv, jobject jobject);
 
-      void process(JNIEnv* jenv, cl_context context, JNIContext* jniContext, KernelArg* arg, int& argPos, int argIdx);
+      void process(JNIEnv* jenv, cl_context context, KernelContext* kernelContext, KernelArg* arg, int& argPos, int argIdx);
 
       void unpinAbort(JNIEnv *jenv);
       void unpinCommit(JNIEnv *jenv);
       void pin(JNIEnv *jenv);
+
+      void* getDataPointer();
 };
 
 #endif // ARRAYBUFFER_H

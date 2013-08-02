@@ -6,6 +6,7 @@
 #include "JNIHelper.h"
 #include "ArrayBuffer.h"
 #include "AparapiBuffer.h"
+#include "GPUElement.h"
 #include "com_amd_aparapi_internal_jni_KernelRunnerJNI.h"
 #include "Config.h"
 #include "BufferManager.h"
@@ -15,7 +16,7 @@
 #define strdup _strdup
 #endif
 
-class JNIContext;
+class KernelContext;
 
 class KernelArg{
    private:
@@ -27,7 +28,7 @@ class KernelArg{
 
       const char* getTypeName();
 
-      //all of these use JNIContext so they can't be inlined
+      //all of these use KernelContext so they can't be inlined
 
       //get the value of a primitive arguement
       void getPrimitiveValue(JNIEnv *jenv, jfloat *value);
@@ -64,17 +65,18 @@ class KernelArg{
    public:
       static jfieldID javaArrayFieldID; 
    public:
-      JNIContext *jniContext;  
+      KernelContext *kernelContext;  
       jobject argObj;    // the Java KernelRunner.KernelArg object that we are mirroring.
       jobject javaArg;   // global reference to the corresponding java KernelArg object we grabbed our own global reference so that the object won't be collected until we dispose!
       char *name;        // used for debugging printfs
       jint type;         // a bit mask determining the type of this arg
 
-      ArrayBuffer *arrayBuffer;
-      AparapiBuffer *aparapiBuffer;
+      GPUElement* buffer;
+      //ArrayBuffer *arrayBuffer;
+      //AparapiBuffer *aparapiBuffer;
 
-      // Uses JNIContext so cant inline here see below
-      KernelArg(JNIEnv *jenv, jobject argObj, JNIContext *jniContext);
+      // Uses KernelContext so cant inline here see below
+      KernelArg(JNIEnv *jenv, jobject argObj, KernelContext *kernelContext);
 
       ~KernelArg(){
       }
@@ -84,14 +86,20 @@ class KernelArg{
        * if this has not been done before or allocating a new one as the array reference has changed.
        * @param jenv JNI reference
        */
-      void updateReference(JNIEnv *jenv);
+      void updateReference(JNIEnv *jenv, BufferManager* bufferManager);
 
-      void unpinAbort(JNIEnv *jenv){
-         arrayBuffer->unpinAbort(jenv);
+      void unpinAbort(JNIEnv *jenv) {
+         if (this->isArray()) {
+            ((ArrayBuffer*)this->buffer)->unpinAbort(jenv);
+         }
       }
+
       void unpinCommit(JNIEnv *jenv){
-         arrayBuffer->unpinCommit(jenv);
+         if (this->isArray()) {
+            ((ArrayBuffer*)this->buffer)->unpinCommit(jenv);
+         }
       }
+
       void unpin(JNIEnv *jenv){
          //if  (value.ref.isPinned == JNI_FALSE){		 
          //     fprintf(stdout, "why are we unpinning buffer %s! isPinned = JNI_TRUE\n", name);
@@ -107,7 +115,9 @@ class KernelArg{
          }
       }
       void pin(JNIEnv *jenv){
-         arrayBuffer->pin(jenv);
+         if (this->isArray()) {
+            ((ArrayBuffer*)this->buffer)->pin(jenv);
+         }
       }
 
       int isArray(){
@@ -183,20 +193,24 @@ class KernelArg{
          type = jenv->GetIntField(javaArg, typeFieldID);
       }
       void syncSizeInBytes(JNIEnv* jenv){
-         arrayBuffer->lengthInBytes = jenv->GetIntField(javaArg, sizeInBytesFieldID);
+         if (this->isArray()) {
+            ((ArrayBuffer*)this->buffer)->lengthInBytes = jenv->GetIntField(javaArg, sizeInBytesFieldID);
+         }
       }
       void syncJavaArrayLength(JNIEnv* jenv){
-         arrayBuffer->length = jenv->GetIntField(javaArg, numElementsFieldID);
+         if (this->isArray()) {
+            ((ArrayBuffer*)this->buffer)->length = jenv->GetIntField(javaArg, numElementsFieldID);
+         }
       }
       void clearExplicitBufferBit(JNIEnv* jenv){
          type &= ~com_amd_aparapi_internal_jni_KernelRunnerJNI_ARG_EXPLICIT_WRITE;
          jenv->SetIntField(javaArg, typeFieldID,type );
       }
 
-      // Uses JNIContext so can't inline here we below.  
+      // Uses KernelContext so can't inline here we below.  
       void syncValue(JNIEnv *jenv);
 
-      // Uses JNIContext so can't inline here we below.  
+      // Uses KernelContext so can't inline here we below.  
       cl_int setPrimitiveArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose);
 };
 
