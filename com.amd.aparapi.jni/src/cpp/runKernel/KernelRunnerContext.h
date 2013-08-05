@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CL\cl.h"
+#include <CL/cl.h>
 #include "jni.h"
 #include "Config.h"
 #include "com_amd_aparapi_internal_jni_KernelRunnerJNI.h"
