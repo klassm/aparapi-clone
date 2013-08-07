@@ -21,7 +21,6 @@ public:
    
    static KernelRunnerContext* contextFor(JNIEnv* jenv, jobject _openCLDeviceObject, int flags, Config* config);
    void dispose(JNIEnv* jenv);
-   void disposeMemory(JNIEnv* jenv);
 
    static KernelRunnerContext* getKernelRunnerContext(jlong kernelRunnerContextHandle){
       return((KernelRunnerContext*)kernelRunnerContextHandle);

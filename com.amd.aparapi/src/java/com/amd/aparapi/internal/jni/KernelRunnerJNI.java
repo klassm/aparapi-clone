@@ -338,14 +338,6 @@ public abstract class KernelRunnerJNI {
    protected native int disposeKernelRunnerJNI(long _kernelRunnerHandle);
 
    /**
-    * Dispose all GPU memory associated to the kernels associated with the given KernelRunner.
-    *
-    * @param _kernelRunnerHandle relates to the runner context on JNI side
-    * @return OpenCL status code
-    */
-   protected native int freeKernelRunnerMemoryJNI(long _kernelRunnerHandle);
-
-   /**
     * Copy an element back from the GPU.
     *
     * @param _kernelRunnerHandle relates to the runner context on JNI side

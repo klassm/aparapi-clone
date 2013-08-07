@@ -1921,10 +1921,4 @@ public class KernelRunner extends KernelRunnerJNI {
    public void setFallbackExecutionMode() {
       executionMode = EXECUTION_MODE.getFallbackExecutionMode();
    }
-
-   public void freeGPUMemory() {
-      if (executionMode == EXECUTION_MODE.GPU && kernelRunnerContextHandle != 0) {
-         freeKernelRunnerMemoryJNI(kernelRunnerContextHandle);
-      }
-   }
 }

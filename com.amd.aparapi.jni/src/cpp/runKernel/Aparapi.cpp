@@ -1203,23 +1203,6 @@ JNI_JAVA(jint, KernelRunnerJNI, disposeKernelRunnerJNI)
       return(status);
 }
 
-JNI_JAVA(jint, KernelRunnerJNI, freeKernelRunnerMemoryJNI)
-      (JNIEnv *jenv, jobject jobj, jlong kernelRunnerContextHandle) {
-      KernelRunnerContext* kernelRunnerContext = KernelRunnerContext::getKernelRunnerContext(kernelRunnerContextHandle);
-
-      if (kernelRunnerContext == NULL) {
-         return 0;
-      }
-
-      kernelRunnerContext->disposeMemory(jenv);
-
-      cl_int status = CL_SUCCESS;
-      CLException::checkCLError(status, "dispose()");
-      
-      return(status);
-
-}
-
 JNI_JAVA(jstring, KernelRunnerJNI, getExtensionsJNI)
    (JNIEnv *jenv, jobject jobj, jlong kernelRunnerContextHandle) {
       initialize(jenv);

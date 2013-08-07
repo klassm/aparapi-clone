@@ -58,14 +58,6 @@ void KernelRunnerContext::dispose(JNIEnv* jenv) {
    }
 }
 
-void KernelRunnerContext::disposeMemory(JNIEnv* jenv) {
-   for (std::vector<KernelContext*>::iterator it = kernelContextList.begin(); it != kernelContextList.end(); it++) {
-      KernelContext* kernel = (*it);
-      kernel->disposeMemory();
-   }
-   bufferManager->cleanUpNonReferencedBuffers(jenv);
-}
-
 /**
  * Initialize a new KernelRunnerContext for a given Device object stemming from a Java JNI call.
  * @param jenv JNI environment
