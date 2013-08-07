@@ -838,6 +838,12 @@ public class KernelRunner extends KernelRunnerJNI {
          }
       }
       */
+
+      // explicit reference check, no equals!
+      if (kernel != kernelMapping.getLastKernel()) {
+         updateKernelJNI(kernelMapping.kernelContextHandle, kernel);
+      }
+
       // Read the array refs after kernel may have changed them
       // We need to do this as input to computing the localSize
       final boolean needSync = updateKernelArrayRefs(kernelMapping, kernel);
@@ -926,7 +932,7 @@ public class KernelRunner extends KernelRunnerJNI {
                try {
                   final ClassModel classModel = new ClassModel(kernel.getClass());
                   Entrypoint entryPoint = classModel.getEntrypoint(kernel);
-                  currentKernelMapping = new KernelMapping(kernel.getClass(), entryPoint);
+                  currentKernelMapping = new KernelMapping(kernel.getClass(), entryPoint, kernel);
                   kernelMappingMap.put(kernel.getClass(), currentKernelMapping);
                } catch (final Exception exception) {
                   return warnFallBackAndExecute(kernel, _range, _passes, exception);

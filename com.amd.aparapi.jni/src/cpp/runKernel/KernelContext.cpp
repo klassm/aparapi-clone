@@ -69,6 +69,11 @@ void KernelContext::dispose(JNIEnv *jenv, Config* config) {
    }
 }
 
+void KernelContext::replaceKernelObject(JNIEnv *jenv, jobject _kernelObject) {
+   jenv->DeleteGlobalRef(this->kernelObject);
+   this->kernelObject = jenv->NewGlobalRef(_kernelObject);
+}
+
 void KernelContext::unpinAll(JNIEnv* jenv) {
    for (int i=0; i< argc; i++){
       KernelArg *arg = args[i];

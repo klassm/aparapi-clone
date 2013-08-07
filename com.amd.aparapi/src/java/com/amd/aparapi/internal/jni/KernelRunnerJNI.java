@@ -284,6 +284,18 @@ public abstract class KernelRunnerJNI {
    protected native long initKernelJNI(long _kernelRunnerHandle, Kernel _kernel);
 
    /**
+    * Update the environment for the given {@link Kernel} on JNI side. This is required as on JNI side the
+    * KernelRunnerContext class will store a reference to the kernel object to extract arguments. When running
+    * kernels multiple times with different arguments we have to replace this reference to use valid values during
+    * execution.
+    *
+    * @param _kernelHandle relates to the kernel context on JNI side
+    * @param _kernel kernel object to execute
+    * @return 1 if the kernel could not be found, else 0
+    */
+   protected native long updateKernelJNI(long _kernelHandle, Kernel _kernel);
+
+   /**
     * Build the given source code for the given kernel runner and kernel handle.
     *
     * @param _kernelRunnerHandle relates to the runner context on JNI side

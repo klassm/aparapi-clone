@@ -35,6 +35,8 @@ public:
    ~KernelContext(){
    }
 
+   void replaceKernelObject(JNIEnv *jenv, jobject _kernelObject);
+
    void dispose(JNIEnv *jenv, Config* config);
    void disposeMemory();
 

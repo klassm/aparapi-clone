@@ -908,6 +908,21 @@ JNI_JAVA(jlong, KernelRunnerJNI, initKernelJNI)
       return((jlong)kernelContext);
 }
 
+JNI_JAVA(jlong, KernelRunnerJNI, updateKernelJNI)
+   (JNIEnv *jenv, jobject jobj, jlong kernelContextHandle, jobject kernelObject) {
+      
+      initialize(jenv);
+
+      KernelContext* kernelContext = KernelContext::getKernelContext(kernelContextHandle);
+
+      if (kernelContext == NULL){
+         return 1;
+      }
+
+      kernelContext->replaceKernelObject(jenv, kernelObject);
+      return 0;
+}
+
 JNI_JAVA(jlong, KernelRunnerJNI, buildProgramJNI)
    (JNIEnv *jenv, jobject jobj, jlong kernelRunnerContextHandle, jlong kernelContextHandle, jstring source) {
 
@@ -916,7 +931,7 @@ JNI_JAVA(jlong, KernelRunnerJNI, buildProgramJNI)
       KernelRunnerContext* kernelRunnerContext = KernelRunnerContext::getKernelRunnerContext(kernelRunnerContextHandle);
       KernelContext* kernelContext = KernelContext::getKernelContext(kernelContextHandle);
 
-      if (kernelContext == NULL || kernelRunnerContext == 0){
+      if (kernelContext == NULL || kernelRunnerContext == NULL){
          return 0;
       }
 
