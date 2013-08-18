@@ -294,7 +294,8 @@ public class MethodModel{
 
                final MethodReferenceEntry methodReferenceEntry = methodCall.getConstantPoolMethodEntry();
                if (!Kernel.isMappedMethod(methodReferenceEntry)) { // we will allow trusted methods to violate this rule
-                  for (final Arg arg : methodReferenceEntry.getArgs()) {
+                  List<Arg> args = methodReferenceEntry.getArgs();
+                  for (final Arg arg : args) {
                      if (arg.isArray()) {
                         throw new ClassParseException(instruction, ClassParseException.TYPE.METHODARRAYARG);
                      }
