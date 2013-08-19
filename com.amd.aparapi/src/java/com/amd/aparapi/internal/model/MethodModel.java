@@ -1461,9 +1461,9 @@ public class MethodModel{
    }
 
    // The entrypoint is used to make checks on object accessors
-   Entrypoint entrypoint = null;
+   VirtualMethodEntry entrypoint = null;
 
-   MethodModel(ClassModelMethod _method, Entrypoint _entrypoint) throws AparapiException {
+   MethodModel(ClassModelMethod _method, VirtualMethodEntry _entrypoint) throws AparapiException {
       entrypoint = _entrypoint;
       init(_method);
    }
