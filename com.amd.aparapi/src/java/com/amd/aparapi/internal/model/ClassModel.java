@@ -39,7 +39,10 @@ package com.amd.aparapi.internal.model;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Stack;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -56,14 +59,14 @@ import com.amd.aparapi.internal.reader.ByteReader;
 
 /**
  * Class represents a ClassFile (MyClass.class).
- *
+ * 
  * A ClassModel is constructed from an instance of a <code>java.lang.Class</code>.
- *
+ * 
  * If the java class mode changes we may need to modify this to accommodate.
- *
+ * 
  * @see <a href="http://java.sun.com/docs/books/jvms/second_edition/ClassFileFormat-Java5.pdf">Java 5 Class File Format</a>
 + * @see <a href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html"> Java 7 Class File Format</a>
- *
+ * 
  * @author gfrost
  *
  */
@@ -128,10 +131,10 @@ public class ClassModel{
 
    /**
     * Create a ClassModel representing a given Class.
-    *
+    * 
     * The class's classfile must be available from the class's classloader via <code>getClassLoader().getResourceAsStream(name))</code>. 
     * For dynamic languages creating classes on the fly we may need another approach. 
-    *
+    * 
     * @param _class The class we will extract the model from
     * @throws ClassParseException
     */
@@ -163,7 +166,7 @@ public class ClassModel{
 
    /**
     * Determine if this is the superclass of some other named class.
-    *
+    * 
     * @param otherClassName The name of the class to compare against
     * @return true if 'this' a superclass of another named class 
     */
@@ -179,7 +182,7 @@ public class ClassModel{
 
    /**
     * Determine if this is the superclass of some other class.
-    *
+    * 
     * @param otherClass The class to compare against
     * @return true if 'this' a superclass of another class   
     */
@@ -196,7 +199,7 @@ public class ClassModel{
 
    /**
     * Getter for superClazz
-    *
+    * 
     * @return the superClazz ClassModel 
     */
    public ClassModel getSuperClazz() {
@@ -216,7 +219,7 @@ public class ClassModel{
 
    /**
     * Convert a given JNI character type (say 'I') to its type name ('int').
-    *
+    * 
     * @param _typeChar
     * @return either a mapped type name or null if no mapping exists.
     */
@@ -619,11 +622,11 @@ public class ClassModel{
       done;
    };
 
-   public class ConstantPool implements Iterable<ConstantPool.Entry> {
+   public class ConstantPool implements Iterable<ConstantPool.Entry>{
 
       private final List<Entry> entries = new ArrayList<Entry>();
 
-      public abstract class Entry {
+      public abstract class Entry{
          private final ConstantPoolType constantPoolType;
 
          private final int slot;
@@ -633,11 +636,6 @@ public class ClassModel{
             slot = _slot;
          }
 
-         public Entry(ConstantPoolMergeHandler mergeHandler, int _slot, ConstantPoolType _constantPoolType) {
-            constantPoolType = _constantPoolType;
-            slot = mergeHandler.slotFor(_slot);
-         }
-
          public ConstantPoolType getConstantPoolType() {
             return (constantPoolType);
          }
@@ -645,25 +643,14 @@ public class ClassModel{
          public int getSlot() {
             return (slot);
          }
-
-         public abstract Entry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler);
       }
 
-      public List<Entry> getEntries() {
-         return entries;
-      }
-
-      public class ClassEntry extends Entry {
+      public class ClassEntry extends Entry{
          private final int nameIndex;
 
          public ClassEntry(ByteReader _byteReader, int _slot) {
             super(_byteReader, _slot, ConstantPoolType.CLASS);
             nameIndex = _byteReader.u2();
-         }
-
-         public ClassEntry(ConstantPoolMergeHandler mergeHandler, int _nameIndex, int _slot, ConstantPoolType _constantPoolType) {
-            super(mergeHandler, _slot, _constantPoolType);
-            nameIndex = mergeHandler.slotFor(_nameIndex);
          }
 
          public int getNameIndex() {
@@ -673,14 +660,9 @@ public class ClassModel{
          public UTF8Entry getNameUTF8Entry() {
             return (getUTF8Entry(nameIndex));
          }
-
-         @Override
-         public ClassEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new ClassEntry(mergeHandler, nameIndex, getSlot(), getConstantPoolType());
-         }
       }
 
-      public class DoubleEntry extends Entry {
+      public class DoubleEntry extends Entry{
          private final double doubleValue;
 
          public DoubleEntry(ByteReader _byteReader, int _slot) {
@@ -688,53 +670,24 @@ public class ClassModel{
             doubleValue = _byteReader.d8();
          }
 
-         public DoubleEntry(ConstantPoolMergeHandler mergeHandler, double _doubleValue, int _slot, ConstantPoolType _constantPoolType) {
-            super(mergeHandler, _slot, _constantPoolType);
-            doubleValue = _doubleValue;
-         }
-
          public double getDoubleValue() {
             return (doubleValue);
          }
-
-         @Override
-         public DoubleEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new DoubleEntry(mergeHandler, doubleValue, getSlot(), getConstantPoolType());
-         }
       }
 
-      public class EmptyEntry extends Entry {
+      public class EmptyEntry extends Entry{
          public EmptyEntry(ByteReader _byteReader, int _slot) {
             super(_byteReader, _slot, ConstantPoolType.EMPTY);
          }
-
-         public EmptyEntry(ConstantPoolMergeHandler mergeHandler, int _slot, ConstantPoolType _constantPoolType) {
-            super(mergeHandler, _slot, _constantPoolType);
-         }
-
-         @Override
-         public EmptyEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new EmptyEntry(mergeHandler, getSlot(), getConstantPoolType());
-         }
       }
 
-      public class FieldEntry extends ReferenceEntry {
+      public class FieldEntry extends ReferenceEntry{
          public FieldEntry(ByteReader _byteReader, int _slot) {
             super(_byteReader, _slot, ConstantPoolType.FIELD);
          }
-
-         public FieldEntry(ConstantPoolMergeHandler mergeHandler, int _referenceClassIndex,
-                           int _nameAndTypeIndex, int _slot, ConstantPoolType _constantPoolType) {
-            super(mergeHandler, _referenceClassIndex, _nameAndTypeIndex, _slot, _constantPoolType);
-         }
-
-         @Override
-         public FieldEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new FieldEntry(mergeHandler, referenceClassIndex, nameAndTypeIndex, getSlot(), getConstantPoolType());
-         }
       }
 
-      public class FloatEntry extends Entry {
+      public class FloatEntry extends Entry{
          private final float floatValue;
 
          public FloatEntry(ByteReader _byteReader, int _slot) {
@@ -742,29 +695,13 @@ public class ClassModel{
             floatValue = _byteReader.f4();
          }
 
-         public FloatEntry(ConstantPoolMergeHandler mergeHandler, int _slot, ConstantPoolType _constantPoolType, float floatValue) {
-            super(mergeHandler, _slot, _constantPoolType);
-            this.floatValue = floatValue;
-         }
-
          public float getFloatValue() {
             return (floatValue);
-         }
-
-         @Override
-         public FloatEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new FloatEntry(mergeHandler, getSlot(), getConstantPoolType(), floatValue);
          }
       }
 
       public class IntegerEntry extends Entry{
          private final int intValue;
-
-         public IntegerEntry(ConstantPoolMergeHandler mergeHandler, int _slot, ConstantPoolType _constantPoolType,
-                             int intValue) {
-            super(mergeHandler, _slot, _constantPoolType);
-            this.intValue = intValue;
-         }
 
          public IntegerEntry(ByteReader _byteReader, int _slot) {
             super(_byteReader, _slot, ConstantPoolType.INTEGER);
@@ -774,32 +711,15 @@ public class ClassModel{
          public int getIntValue() {
             return (intValue);
          }
-
-         @Override
-         public Entry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new IntegerEntry(mergeHandler, getSlot(), getConstantPoolType(), intValue);
-         }
       }
 
-      public class InterfaceMethodEntry extends MethodReferenceEntry {
+      public class InterfaceMethodEntry extends MethodReferenceEntry{
          InterfaceMethodEntry(ByteReader _byteReader, int _slot) {
             super(_byteReader, _slot, ConstantPoolType.INTERFACEMETHOD);
          }
-
-         public InterfaceMethodEntry(ConstantPoolMergeHandler mergeHandler, int _referenceClassIndex,
-                                     int _nameAndTypeIndex, int _slot, ConstantPoolType _constantPoolType,
-                                     List<Arg> args, Type returnType) {
-            super(mergeHandler, _referenceClassIndex, _nameAndTypeIndex, _slot, _constantPoolType, args, returnType);
-         }
-
-         @Override
-         public InterfaceMethodEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new InterfaceMethodEntry(mergeHandler, referenceClassIndex, nameAndTypeIndex, getSlot(), getConstantPoolType(),
-                getArgs(),getReturnType());
-         }
       }
 
-      public class LongEntry extends Entry {
+      public class LongEntry extends Entry{
          private final long longValue;
 
          public LongEntry(ByteReader _byteReader, int _slot) {
@@ -807,29 +727,14 @@ public class ClassModel{
             longValue = _byteReader.u8();
          }
 
-         public LongEntry(ConstantPoolMergeHandler mergeHandler, int _slot, ConstantPoolType _constantPoolType, long longValue) {
-            super(mergeHandler, _slot, _constantPoolType);
-            this.longValue = longValue;
-         }
-
          public long getLongValue() {
             return (longValue);
          }
-
-         @Override
-         public LongEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new LongEntry(mergeHandler, getSlot(), getConstantPoolType(), longValue);
-         }
       }
 
-      public class MethodEntry extends MethodReferenceEntry {
+      public class MethodEntry extends MethodReferenceEntry{
          public MethodEntry(ByteReader _byteReader, int _slot) {
             super(_byteReader, _slot, ConstantPoolType.METHOD);
-         }
-
-         public MethodEntry(ConstantPoolMergeHandler mergeHandler, int _referenceClassIndex, int _nameAndTypeIndex,
-                            int _slot, ConstantPoolType _constantPoolType, List<Arg> args, Type returnType) {
-            super(mergeHandler, _referenceClassIndex, _nameAndTypeIndex, _slot, _constantPoolType, args, returnType);
          }
 
          @Override public String toString() {
@@ -840,15 +745,9 @@ public class ClassModel{
             sb.append(getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8());
             return (sb.toString());
          }
-
-         @Override
-         public MethodEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new MethodEntry(mergeHandler, referenceClassIndex, nameAndTypeIndex, getSlot(), getConstantPoolType(),
-                getArgs(), getReturnType());
-         }
       }
 
-      public class NameAndTypeEntry extends Entry {
+      public class NameAndTypeEntry extends Entry{
          private final int descriptorIndex;
 
          private final int nameIndex;
@@ -857,12 +756,6 @@ public class ClassModel{
             super(_byteReader, _slot, ConstantPoolType.NAMEANDTYPE);
             nameIndex = _byteReader.u2();
             descriptorIndex = _byteReader.u2();
-         }
-
-         public NameAndTypeEntry(ConstantPoolMergeHandler mergeHandler, int _slot, ConstantPoolType _constantPoolType, int descriptorIndex, int nameIndex) {
-            super(mergeHandler, _slot, _constantPoolType);
-            this.descriptorIndex = mergeHandler.slotFor(descriptorIndex);
-            this.nameIndex = mergeHandler.slotFor(nameIndex);
          }
 
          public int getDescriptorIndex() {
@@ -880,24 +773,14 @@ public class ClassModel{
          public UTF8Entry getNameUTF8Entry() {
             return (getUTF8Entry(nameIndex));
          }
-
-         @Override
-         public NameAndTypeEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new NameAndTypeEntry(mergeHandler, getSlot(), getConstantPoolType(), descriptorIndex, nameIndex);
-         }
       }
 
-      class MethodTypeEntry extends Entry {
+      class MethodTypeEntry extends Entry{
          private int descriptorIndex;
 
          MethodTypeEntry(ByteReader _byteReader, int _slot) {
             super(_byteReader, _slot, ConstantPoolType.METHODTYPE);
             descriptorIndex = _byteReader.u2();
-         }
-
-         MethodTypeEntry(ConstantPoolMergeHandler mergeHandler, int _slot, ConstantPoolType _constantPoolType, int descriptorIndex) {
-            super(mergeHandler, _slot, _constantPoolType);
-            this.descriptorIndex = mergeHandler.slotFor(descriptorIndex);
          }
 
          int getDescriptorIndex() {
@@ -908,13 +791,9 @@ public class ClassModel{
             return (ConstantPool.this.getUTF8Entry(descriptorIndex));
          }
 
-         @Override
-         public MethodTypeEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new MethodTypeEntry(mergeHandler, getSlot(), getConstantPoolType(), descriptorIndex);
-         }
       }
 
-      class MethodHandleEntry extends Entry {
+      class MethodHandleEntry extends Entry{
          // http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.4
 
          private int referenceKind;
@@ -927,14 +806,6 @@ public class ClassModel{
             referenceIndex = _byteReader.u2();
          }
 
-         MethodHandleEntry(ConstantPoolMergeHandler mergeHandler, int _slot, ConstantPoolType _constantPoolType,
-                           int referenceKind, int referenceIndex) {
-            super(mergeHandler, _slot, _constantPoolType);
-
-            this.referenceKind = referenceKind;
-            this.referenceIndex = mergeHandler.slotFor(referenceIndex);
-         }
-
          int getReferenceIndex() {
             return (referenceIndex);
          }
@@ -943,13 +814,9 @@ public class ClassModel{
             return (referenceKind);
          }
 
-         @Override
-         public MethodHandleEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new MethodHandleEntry(mergeHandler, getSlot(), getConstantPoolType(), referenceKind, referenceIndex);
-         }
       }
 
-      class InvokeDynamicEntry extends Entry {
+      class InvokeDynamicEntry extends Entry{
          // http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.4
 
          private int bootstrapMethodAttrIndex;
@@ -962,12 +829,6 @@ public class ClassModel{
             nameAndTypeIndex = _byteReader.u2();
          }
 
-         InvokeDynamicEntry(ConstantPoolMergeHandler mergeHandler, int _slot, ConstantPoolType _constantPoolType, int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
-            super(mergeHandler, _slot, _constantPoolType);
-            this.bootstrapMethodAttrIndex = mergeHandler.slotFor(bootstrapMethodAttrIndex);
-            this.nameAndTypeIndex = mergeHandler.slotFor(nameAndTypeIndex);
-         }
-
          int getBootstrapMethodAttrIndex() {
             return (bootstrapMethodAttrIndex);
          }
@@ -976,15 +837,11 @@ public class ClassModel{
             return (nameAndTypeIndex);
          }
 
-         @Override
-         public InvokeDynamicEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new InvokeDynamicEntry(mergeHandler, getSlot(), getConstantPoolType(), bootstrapMethodAttrIndex, nameAndTypeIndex);
-         }
       }
 
-      public abstract class MethodReferenceEntry extends ReferenceEntry {
+      public abstract class MethodReferenceEntry extends ReferenceEntry{
 
-         public class Arg extends Type {
+         public class Arg extends Type{
             Arg(String _signature, int _start, int _pos, int _argc) {
                super(_signature.substring(_start, _pos + 1));
                argc = _argc;
@@ -997,7 +854,7 @@ public class ClassModel{
             }
          }
 
-         private List<Arg> args = null;
+         private Arg[] args = null;
 
          private Type returnType = null;
 
@@ -1020,13 +877,7 @@ public class ClassModel{
 
          public MethodReferenceEntry(ByteReader byteReader, int slot, ConstantPoolType constantPoolType) {
             super(byteReader, slot, constantPoolType);
-         }
 
-         protected MethodReferenceEntry(ConstantPoolMergeHandler mergeHandler, int _referenceClassIndex,
-                                        int _nameAndTypeIndex, int _slot, ConstantPoolType _constantPoolType, List<Arg> args, Type returnType) {
-            super(mergeHandler, _referenceClassIndex, _nameAndTypeIndex, _slot, _constantPoolType);
-            this.args = args;
-            this.returnType = returnType;
          }
 
          public int getStackProduceCount() {
@@ -1041,7 +892,7 @@ public class ClassModel{
             return (returnType);
          }
 
-         public List<Arg> getArgs() {
+         public Arg[] getArgs() {
             if ((args == null) || (returnType == null)) {
                final List<Arg> argList = new ArrayList<Arg>();
                final NameAndTypeEntry nameAndTypeEntry = getNameAndTypeEntry();
@@ -1109,18 +960,18 @@ public class ClassModel{
                }
                // System.out.println("method "+name+" has signature of "+signature+" which has "+count+" args");
 
-               args = Collections.unmodifiableList(argList);
+               args = argList.toArray(new Arg[0]);
             }
 
             return (args);
          }
 
          public int getStackConsumeCount() {
-            return (getArgs().size());
+            return (getArgs().length);
          }
       }
 
-      public abstract class ReferenceEntry extends Entry {
+      public abstract class ReferenceEntry extends Entry{
          protected int referenceClassIndex;
 
          protected int nameAndTypeIndex;
@@ -1131,13 +982,6 @@ public class ClassModel{
             super(_byteReader, _slot, _constantPoolType);
             referenceClassIndex = _byteReader.u2();
             nameAndTypeIndex = _byteReader.u2();
-         }
-
-         public ReferenceEntry(ConstantPoolMergeHandler mergeHandler, int _referenceClassIndex, int _nameAndTypeIndex,
-                               int _slot, ConstantPoolType _constantPoolType) {
-            super(mergeHandler, _slot, _constantPoolType);
-            referenceClassIndex = mergeHandler.slotFor(_referenceClassIndex);
-            nameAndTypeIndex = mergeHandler.slotFor(_nameAndTypeIndex);
          }
 
          public ClassEntry getClassEntry() {
@@ -1197,17 +1041,12 @@ public class ClassModel{
          }
       }
 
-      public class StringEntry extends Entry {
+      public class StringEntry extends Entry{
          private final int utf8Index;
 
          public StringEntry(ByteReader _byteReader, int _slot) {
             super(_byteReader, _slot, ConstantPoolType.STRING);
             utf8Index = _byteReader.u2();
-         }
-
-         public StringEntry(ConstantPoolMergeHandler mergeHandler, int _slot, ConstantPoolType _constantPoolType, int utf8Index) {
-            super(mergeHandler, _slot, _constantPoolType);
-            this.utf8Index = mergeHandler.slotFor(utf8Index);
          }
 
          public int getUTF8Index() {
@@ -1217,14 +1056,9 @@ public class ClassModel{
          public UTF8Entry getStringUTF8Entry() {
             return (getUTF8Entry(utf8Index));
          }
-
-         @Override
-         public StringEntry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new StringEntry(mergeHandler, getSlot(), getConstantPoolType(), utf8Index);
-         }
       }
 
-      public class UTF8Entry extends Entry {
+      public class UTF8Entry extends Entry{
          private final String UTF8;
 
          public UTF8Entry(ByteReader _byteReader, int _slot) {
@@ -1232,18 +1066,8 @@ public class ClassModel{
             UTF8 = _byteReader.utf8();
          }
 
-         public UTF8Entry(ConstantPoolMergeHandler mergeHandler, int _slot, ConstantPoolType _constantPoolType, String UTF8) {
-            super(mergeHandler, _slot, _constantPoolType);
-            this.UTF8 = UTF8;
-         }
-
          public String getUTF8() {
             return (UTF8);
-         }
-
-         @Override
-         public UTF8Entry cloneWithNewSlot(ConstantPoolMergeHandler mergeHandler) {
-            return new UTF8Entry(mergeHandler, getSlot(), getConstantPoolType(), UTF8);
          }
       }
 
@@ -2607,9 +2431,9 @@ public class ClassModel{
 
    /**
     * Populate this model by parsing a given classfile from the given classloader.
-    *
+    * 
     * We create a ByteReader (wrapper around the bytes representing the classfile) and pass it to local inner classes to handle the various sections of the class file. 
-    *
+    * 
     * @see ByteReader
     * @see <a href="http://java.sun.com/docs/books/jvms/second_edition/ClassFileFormat-Java5.pdf">Java 5 Class File Format</a>
     * @param _classLoader The classloader to access the classfile
@@ -2719,10 +2543,10 @@ public class ClassModel{
 
    /**
     * Look up a ConstantPool MethodEntry and return the corresponding Method.  
-    *
+    * 
     * @param _methodEntry The ConstantPool MethodEntry we want.
     * @param _isSpecial True if we wish to delegate to super (to support <code>super.foo()</code>)
-    *
+    * 
     * @return The Method or null if we fail to locate a given method.
     */
    public ClassModelMethod getMethod(MethodEntry _methodEntry, boolean _isSpecial) {
@@ -2753,10 +2577,10 @@ public class ClassModel{
 
    /**
     * Create a MethodModel for a given method name and signature.
-    *
+    * 
     * @param _name
     * @param _signature
-    * @return
+    * @return 
     * @throws AparapiException
     */
 
@@ -2809,35 +2633,5 @@ public class ClassModel{
 
    public Entrypoint getEntrypoint() throws AparapiException {
       return (getEntrypoint("run", "()V", null));
-   }
-
-   private Map<Class, Map<Integer, Integer>> mergeConstantPoolMap = new HashMap<Class, Map<Integer, Integer>>();
-
-   public void merge(ClassModel classModel) {
-      Class<? extends ClassModel> clazz = classModel.getClass();
-
-      if (! mergeConstantPoolMap.containsKey(clazz)) {
-         mergeConstantPoolMap.put(clazz, new HashMap<Integer, Integer>());
-      }
-
-      Map<Integer, Integer> constantPoolUpdateMap = mergeConstantPoolMap.get(clazz);
-      ConstantPoolMergeHandler mergeHandler = new ConstantPoolMergeHandler(constantPool, constantPoolUpdateMap);
-
-      merge(classModel.getConstantPool(), mergeHandler);
-      merge(classModel.methods, mergeHandler);
-   }
-
-   private void merge(List<ClassModelMethod> methods, ConstantPoolMergeHandler mergeHandler) {
-      for (ClassModelMethod method : methods) {
-
-      }
-   }
-
-
-   private void merge(ConstantPool mergeConstantPool, ConstantPoolMergeHandler mergeHandler) {
-
-      for (ConstantPool.Entry entry : mergeConstantPool.entries) {
-         constantPool.add(entry.cloneWithNewSlot(mergeHandler));
-      }
    }
 }

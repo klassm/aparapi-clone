@@ -687,8 +687,8 @@ public class Entrypoint{
                         setRequiresAtomics32Pragma(true);
                      }
 
-                     final List<Arg> methodArgs = (List<Arg>) methodEntry.getArgs();
-                     if ((methodArgs.size() > 0) && methodArgs.get(0).isArray()) { //currently array arg can only take slot 0
+                     final Arg methodArgs[] = methodEntry.getArgs();
+                     if ((methodArgs.length > 0) && methodArgs[0].isArray()) { //currently array arg can only take slot 0
                         final Instruction arrInstruction = invokeInstruction.getArg(0);
                         if (arrInstruction instanceof AccessField) {
                            final AccessField access = (AccessField) arrInstruction;
