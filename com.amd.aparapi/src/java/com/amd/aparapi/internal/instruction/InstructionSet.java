@@ -2758,6 +2758,16 @@ public class InstructionSet{
       @Override public int getStackProduceCount() {
          return (getConstantPoolMethodEntry().getStackProduceCount());
       }
+
+      public String getVirtualMethodInvokeFieldName() {
+         Instruction firstChild = getFirstChild();
+         if (firstChild instanceof InstructionSet.AccessInstanceField) {
+            String fieldName = ((InstructionSet.AccessInstanceField) firstChild).getConstantPoolFieldEntry()
+                  .getNameAndTypeEntry().getNameUTF8Entry().getUTF8();
+            return fieldName;
+         }
+         return null;
+      }
    }
 
    public static class I_IOR extends BinaryOperator{

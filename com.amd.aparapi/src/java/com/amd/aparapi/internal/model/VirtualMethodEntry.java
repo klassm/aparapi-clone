@@ -17,38 +17,70 @@ import java.util.logging.Logger;
 
 public class VirtualMethodEntry {
    protected static Logger logger = Logger.getLogger(Config.getLoggerName());
+
    protected final List<ClassModel.ClassModelField> referencedClassModelFields = new ArrayList<ClassModel.ClassModelField>();
+
    protected final List<Field> referencedFields = new ArrayList<Field>();
+
    protected final boolean fallback = false;
+
    protected final Set<String> referencedFieldNames = new LinkedHashSet<String>();
+
    protected final Set<String> arrayFieldAssignments = new LinkedHashSet<String>();
+
    protected final Set<String> arrayFieldAccesses = new LinkedHashSet<String>();
-   // Classes of object array members
+
+   /**
+    * Classes of object array members
+    */
    protected final HashMap<String, ClassModel> objectArrayFieldsClasses = new HashMap<String, ClassModel>();
-   // Keep track of arrays whose length is taken via foo.length
+   /**
+    * Keep track of arrays whose length is taken via foo.length
+    */
    protected final Set<String> arrayFieldArrayLengthUsed = new LinkedHashSet<String>();
+
    protected final List<MethodModel> calledMethods = new ArrayList<MethodModel>();
-   // Supporting classes of object array members like supers
+
+   /**
+    * Supporting classes of object array members like supers
+    */
    private final HashMap<String, ClassModel> allFieldsClasses = new HashMap<String, ClassModel>();
+
    protected ClassModel classModel;
+
    protected MethodModel methodModel;
+
    /**
-      True is an indication to use the fp64 pragma
-   */
+    * List of virtual methods called from this class.
+    */
+   protected List<VirtualMethodEntry> virtualMethodEntryReferenceList = new ArrayList<VirtualMethodEntry>();
+
+   /**
+    * Name of fields used for virtual method calls.
+    */
+   protected Set<String> virtualMethodFieldNames = new HashSet<String>();
+
+   /**
+    *  True is an indication to use the fp64 pragma
+    */
    protected boolean usesDoubles;
+
    /**
-      True is an indication to use the byte addressable store pragma
-   */
+    * True is an indication to use the byte addressable store pragma
+    */
    protected boolean usesByteWrites;
+
    /**
-      True is an indication to use the atomics pragmas
-   */
+    * True is an indication to use the atomics pragmas
+    */
    private boolean usesAtomic32;
    private boolean usesAtomic64;
 
-   public VirtualMethodEntry(MethodModel _methodModel, ClassModel _classModel) {
+   public VirtualMethodEntry(MethodModel _methodModel, ClassModel _classModel) throws AparapiException {
       methodModel = _methodModel;
       classModel = _classModel;
+
+      init();
    }
 
    public static Field getFieldFromClassHierarchy(Class<?> _clazz, String _name) throws AparapiException {
@@ -212,14 +244,14 @@ public class VirtualMethodEntry {
             final Instruction refAccess = arrayAccess.getArrayRef();
             //if (refAccess instanceof I_GETFIELD) {
 
-               // It is a call from a member obj array element
-               if (logger.isLoggable(Level.FINE)) {
-                  logger.fine("Looking for class in accessor call: " + methodsActualClassName);
-               }
-               final ClassModel memberClassModel = getOrUpdateAllClassAccesses(methodsActualClassName);
+            // It is a call from a member obj array element
+            if (logger.isLoggable(Level.FINE)) {
+               logger.fine("Looking for class in accessor call: " + methodsActualClassName);
+            }
+            final ClassModel memberClassModel = getOrUpdateAllClassAccesses(methodsActualClassName);
 
-               // false = no invokespecial allowed here
-               return memberClassModel.getMethod(_methodEntry, false);
+            // false = no invokespecial allowed here
+            return memberClassModel.getMethod(_methodEntry, false);
             //}
          }
       }
@@ -274,7 +306,7 @@ public class VirtualMethodEntry {
          for (final ClassModel.ConstantPool.FieldEntry f : structMemberSet) {
             if (f.getNameAndTypeEntry().getNameUTF8Entry().getUTF8().equals(accessedFieldName)
                   && f.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8()
-                        .equals(field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8())) {
+                  .equals(field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8())) {
 
                if (logger.isLoggable(Level.FINE)) {
                   logger.fine("Found match: " + accessedFieldName + " class: " + field.getClassEntry().getNameUTF8Entry().getUTF8()
@@ -306,7 +338,7 @@ public class VirtualMethodEntry {
          for (final ClassModel.ConstantPool.FieldEntry f : structMemberSet) {
             if (f.getNameAndTypeEntry().getNameUTF8Entry().getUTF8().equals(accessedFieldName)
                   && f.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8()
-                        .equals(field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8())) {
+                  .equals(field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8())) {
                found = true;
             }
          }
@@ -370,10 +402,21 @@ public class VirtualMethodEntry {
       }
 
       if ((m == null) && !isMapped && (methodCall instanceof InstructionSet.I_INVOKEVIRTUAL)) {
+         String fieldName = ((InstructionSet.I_INVOKEVIRTUAL) methodCall).getVirtualMethodInvokeFieldName();
+         virtualMethodFieldNames.add(fieldName);
+
          String otherClassName = methodEntry.getClassEntry().getNameUTF8Entry().getUTF8().replace('/', '.');
          ClassModel otherClassModel = getOrUpdateAllClassAccesses(otherClassName);
 
-         m = otherClassModel.getMethod(methodEntry, false);
+         String methodName = methodEntry.getNameAndTypeEntry().getNameUTF8Entry().getUTF8();
+         String methodDescriptor = methodEntry.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8();
+
+         m = otherClassModel.getMethod(methodName, methodDescriptor);
+
+         if (m != null) {
+            VirtualMethodEntry otherVirtualMethodEntry = new VirtualMethodEntry(new MethodModel(m), otherClassModel);
+            virtualMethodEntryReferenceList.add(otherVirtualMethodEntry);
+         }
       }
 
       if (logger.isLoggable(Level.INFO)) {
@@ -423,14 +466,12 @@ public class VirtualMethodEntry {
       return (classModel);
    }
 
-   /*
-       * Return the best call target MethodModel by looking in the class hierarchy
-       * @param _methodEntry MethodEntry for the desired target
-       * @return the fully qualified name such as "com_amd_javalabs_opencl_demo_PaternityTest$SimpleKernel__actuallyDoIt"
-       */
+   /**
+    * Return the best call target MethodModel by looking in the class hierarchy
+    * @param _methodEntry MethodEntry for the desired target
+    * @return the fully qualified name such as "com_amd_javalabs_opencl_demo_PaternityTest$SimpleKernel__actuallyDoIt"
+    */
    public MethodModel getCallTarget(ClassModel.ConstantPool.MethodEntry _methodEntry, boolean _isSpecial, InstructionSet.MethodCall _methodCall) {
-
-
 
       ClassModel.ClassModelMethod target = getClassModel().getMethod(_methodEntry, _isSpecial);
       boolean isMapped = Kernel.isMappedMethod(_methodEntry);
@@ -485,12 +526,8 @@ public class VirtualMethodEntry {
       }
 
       if (_methodCall instanceof InstructionSet.I_INVOKEVIRTUAL) {
-         Instruction firstChild = ((InstructionSet.I_INVOKEVIRTUAL) _methodCall).getFirstChild();
-         if (firstChild instanceof InstructionSet.AccessInstanceField) {
-            String fieldName = ((InstructionSet.AccessInstanceField) firstChild).getConstantPoolFieldEntry()
-                  .getNameAndTypeEntry().getNameUTF8Entry().getUTF8();
-            System.out.println(fieldName);
-         }
+         String fieldName = ((InstructionSet.I_INVOKEVIRTUAL) _methodCall).getVirtualMethodInvokeFieldName();
+         System.out.println(fieldName);
       }
 
       assert target == null : "Should not have missed a method in calledMethods";

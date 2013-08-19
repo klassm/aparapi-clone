@@ -54,7 +54,5 @@ public class Entrypoint extends VirtualMethodEntry {
    public Entrypoint(ClassModel _classModel, MethodModel _methodModel, Object _k) throws AparapiException {
       super(_methodModel, _classModel);
       kernelInstance = _k;
-
-      init();
    }
 }
