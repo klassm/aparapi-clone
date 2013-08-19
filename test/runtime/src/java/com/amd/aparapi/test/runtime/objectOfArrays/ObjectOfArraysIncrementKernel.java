@@ -16,7 +16,7 @@ public class ObjectOfArraysIncrementKernel extends Kernel {
       int id = getGlobalId();
       if (id >= size) return;
 
-      int value = holder.getAt(id);
+      int value = holder.itemAt(id);
       holder.setAt(id, value + 1);
    }
 }

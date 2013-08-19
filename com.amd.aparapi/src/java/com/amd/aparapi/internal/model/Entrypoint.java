@@ -54,6 +54,7 @@ import java.util.logging.Logger;
 
 import com.amd.aparapi.Config;
 import com.amd.aparapi.Kernel;
+import com.amd.aparapi.annotation.InlineClass;
 import com.amd.aparapi.internal.exception.AparapiException;
 import com.amd.aparapi.internal.exception.ClassParseException;
 import com.amd.aparapi.internal.instruction.Instruction;
@@ -189,7 +190,7 @@ public class Entrypoint{
       try {
          field = _clazz.getDeclaredField(_name);
          final Class<?> type = field.getType();
-         if (type.isPrimitive() || type.isArray()) {
+         if (type.isPrimitive() || type.isArray() || type.isAnnotationPresent(InlineClass.class)) {
             return field;
          }
          if (logger.isLoggable(Level.FINE)) {
@@ -451,6 +452,13 @@ public class Entrypoint{
          //   logger.fine("Looking for: " + methodEntry + " in other class " + otherClass.getName());
          //}
          // false because INVOKESPECIAL not allowed here 
+         m = otherClassModel.getMethod(methodEntry, false);
+      }
+
+      if ((m == null) && !isMapped && (methodCall instanceof I_INVOKEVIRTUAL)) {
+         String otherClassName = methodEntry.getClassEntry().getNameUTF8Entry().getUTF8().replace('/', '.');
+         ClassModel otherClassModel = getOrUpdateAllClassAccesses(otherClassName);
+
          m = otherClassModel.getMethod(methodEntry, false);
       }
 
@@ -859,7 +867,10 @@ public class Entrypoint{
     * @param _methodEntry MethodEntry for the desired target
     * @return the fully qualified name such as "com_amd_javalabs_opencl_demo_PaternityTest$SimpleKernel__actuallyDoIt"
     */
-   public MethodModel getCallTarget(MethodEntry _methodEntry, boolean _isSpecial) {
+   public MethodModel getCallTarget(MethodEntry _methodEntry, boolean _isSpecial, MethodCall _methodCall) {
+
+
+
       ClassModelMethod target = getClassModel().getMethod(_methodEntry, _isSpecial);
       boolean isMapped = Kernel.isMappedMethod(_methodEntry);
 
@@ -909,6 +920,15 @@ public class Entrypoint{
                      + m.getMethod().getName() + " " + m.getMethod().getDescriptor());
             }
             return m;
+         }
+      }
+
+      if (_methodCall instanceof InstructionSet.I_INVOKEVIRTUAL) {
+         Instruction firstChild = ((I_INVOKEVIRTUAL) _methodCall).getFirstChild();
+         if (firstChild instanceof InstructionSet.AccessInstanceField) {
+            String fieldName = ((InstructionSet.AccessInstanceField) firstChild).getConstantPoolFieldEntry()
+                  .getNameAndTypeEntry().getNameUTF8Entry().getUTF8();
+            System.out.println(fieldName);
          }
       }
 

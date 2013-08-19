@@ -225,7 +225,7 @@ public abstract class KernelWriter extends BlockWriter{
             assert entryPoint != null : "entryPoint should not be null";
             final boolean isSpecial = _methodCall instanceof I_INVOKESPECIAL;
             boolean isMapped = Kernel.isMappedMethod(_methodEntry);
-            final MethodModel m = entryPoint.getCallTarget(_methodEntry, isSpecial);
+            final MethodModel m = entryPoint.getCallTarget(_methodEntry, isSpecial, _methodCall);
 
             if (m != null) {
                write(m.getName());

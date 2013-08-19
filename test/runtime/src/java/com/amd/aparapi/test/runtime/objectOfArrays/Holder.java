@@ -1,7 +1,9 @@
 package com.amd.aparapi.test.runtime.objectOfArrays;
 
+import com.amd.aparapi.annotation.InlineClass;
 import com.amd.aparapi.internal.kernel.KernelRunner;
 
+@InlineClass
 public class Holder {
    private int[] data;
 
@@ -9,7 +11,7 @@ public class Holder {
       this.data = data;
    }
 
-   public int getAt(int index) {
+   public int itemAt(int index) {
       return data[index];
    }
 
