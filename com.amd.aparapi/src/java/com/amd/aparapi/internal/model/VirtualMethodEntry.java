@@ -18,13 +18,13 @@ import java.util.logging.Logger;
 public class VirtualMethodEntry {
    protected static Logger logger = Logger.getLogger(Config.getLoggerName());
 
-   protected final Set<ClassModel.ClassModelField> referencedClassModelFields = new HashSet<ClassModel.ClassModelField>();
+   protected final List<ClassModel.ClassModelField> referencedClassModelFields = new ArrayList<ClassModel.ClassModelField>();
 
-   protected final Set<Field> referencedFields = new HashSet<Field>();
+   protected final List<Field> referencedFields = new ArrayList<Field>();
 
    protected final boolean fallback = false;
 
-   protected final Set<String> referencedFieldNames = new LinkedHashSet<String>();
+   protected final List<String> referencedFieldNames = new ArrayList<String>();
 
    protected final Set<String> arrayFieldAssignments = new LinkedHashSet<String>();
 
@@ -455,11 +455,11 @@ public class VirtualMethodEntry {
       return (fallback);
    }
 
-   public Set<ClassModel.ClassModelField> getReferencedClassModelFields() {
+   public List<ClassModel.ClassModelField> getReferencedClassModelFields() {
       return (referencedClassModelFields);
    }
 
-   public Set<Field> getReferencedFields() {
+   public List<Field> getReferencedFields() {
       return (referencedFields);
    }
 
@@ -467,7 +467,7 @@ public class VirtualMethodEntry {
       return calledMethods;
    }
 
-   public Set<String> getReferencedFieldNames() {
+   public List<String> getReferencedFieldNames() {
       return (referencedFieldNames);
    }
 
@@ -942,8 +942,8 @@ public class VirtualMethodEntry {
    /**
     * Remove all {@link InlineClass} references from the referenced field lists and add all the attributes
     * from within the referenced inline classes.
-    * The containers holding all the references are sets, so we do not need to care about checking whether the
-    * fields are already contained.
+    * We need to take care of the list order, as the three attribute lists {@link #referencedFields},
+    * {@link #referencedFieldNames}, {@link #referencedClassModelFields} have to be kept in sync.
     */
    private void updateReferencedFieldsForVirtualMethodCalls() {
       ArrayList<Field> referencedFieldsClone = new ArrayList<Field>(referencedFields);
@@ -963,9 +963,17 @@ public class VirtualMethodEntry {
       }
 
       for (VirtualMethodEntry virtualMethodEntry : virtualMethodEntryReferenceList) {
-         referencedFields.addAll(virtualMethodEntry.referencedFields);
-         referencedFieldNames.addAll(virtualMethodEntry.referencedFieldNames);
-         referencedClassModelFields.addAll(virtualMethodEntry.referencedClassModelFields);
+         addAllIfNotContainedIn(referencedFields, virtualMethodEntry.referencedFields);
+         addAllIfNotContainedIn(referencedFieldNames, virtualMethodEntry.referencedFieldNames);
+         addAllIfNotContainedIn(referencedClassModelFields, virtualMethodEntry.referencedClassModelFields);
+      }
+   }
+
+   private <T> void addAllIfNotContainedIn(List<T> dest, List<T> source) {
+      for (T t : source) {
+         if (! dest.contains(t)) {
+            dest.add(t);
+         }
       }
    }
 

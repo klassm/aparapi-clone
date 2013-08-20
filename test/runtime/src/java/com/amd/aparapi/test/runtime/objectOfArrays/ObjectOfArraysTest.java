@@ -1,5 +1,6 @@
 package com.amd.aparapi.test.runtime.objectOfArrays;
 
+import com.amd.aparapi.EXECUTION_MODE;
 import com.amd.aparapi.internal.kernel.KernelRunner;
 import org.junit.Test;
 
@@ -28,5 +29,7 @@ public class ObjectOfArraysTest {
       for (int i = 0; i < dataCopy.length; i++) {
          assertThat(data[i], is(dataCopy[i] + 1));
       }
+
+      assertThat(kernelRunner.getExecutionMode(), is(EXECUTION_MODE.GPU));
    }
 }
