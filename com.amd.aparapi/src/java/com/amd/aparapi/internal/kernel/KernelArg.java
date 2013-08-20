@@ -12,8 +12,6 @@ import com.amd.aparapi.internal.model.ClassModel;
  * Each field (or captured field in the case of an anonymous inner class) referenced by any bytecode reachable from the users Kernel.run(), will
  * need to be represented as a <code>KernelArg</code>.
  * 
- * @see com.amd.aparapi.Kernel#execute(int _globalSize)
- * 
  * @author gfrost
  * 
  */
@@ -44,6 +42,11 @@ public class KernelArg extends KernelArgJNI{
     * Size of this primitive
     */
    private int primitiveSize;
+
+   /**
+    * Path to the original kernel object (used for finding the original reference upon updates)
+    */
+   private String inlineReferencePath;
 
    /**
     * Default constructor
@@ -256,10 +259,24 @@ public class KernelArg extends KernelArgJNI{
    }
 
    /**
-    * @param dims the dimsensions for the buffer
+    * @param dims the dimensions for the buffer
     */
    protected void setDims(int[] dims) {
       this.dims = dims;
+   }
+
+   /**
+    * @return inline reference path
+    */
+   public String getInlineReferencePath() {
+      return inlineReferencePath;
+   }
+
+   /**
+    * @param inlineReferencePath inline reference path used for finding the original reference upon updates
+    */
+   public void setInlineReferencePath(String inlineReferencePath) {
+      this.inlineReferencePath = inlineReferencePath;
    }
 
    @Override

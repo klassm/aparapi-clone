@@ -257,6 +257,9 @@ public abstract class KernelWriter extends BlockWriter{
                write("[");
                writeInstruction(arrayAccess.getArrayIndex());
                write("])");
+            } else if (i instanceof AccessField &&
+                  entryPoint.isFieldVirtual(getFieldNameFromAccessFieldInstruction(i))) {
+               write("this");
             } else {
                assert false : "unhandled call from: " + i;
             }
@@ -269,6 +272,14 @@ public abstract class KernelWriter extends BlockWriter{
          }
          write(")");
       }
+   }
+
+   private String getFieldNameFromAccessFieldInstruction(Instruction i) {
+      if (! (i instanceof  AccessField)) {
+         throw new IllegalArgumentException("can only find out field name for AccessField objects.");
+      }
+
+      return ((AccessField) i).getConstantPoolFieldEntry().getNameAndTypeEntry().getNameUTF8Entry().getUTF8();
    }
 
    public void writePragma(String _name, boolean _enable) {
@@ -605,7 +616,8 @@ public abstract class KernelWriter extends BlockWriter{
 
         if (!mm.getMethod().isStatic()) {
             if ((mm.getMethod().getClassModel() == _entryPoint.getClassModel())
-                    || mm.getMethod().getClassModel().isSuperClass(_entryPoint.getClassModel().getClassWeAreModelling())) {
+                    || mm.getMethod().getClassModel().isSuperClass(_entryPoint.getClassModel().getClassWeAreModelling())
+                     || entryPoint.isVirtualMethod(mm.getName())) {
                 write("This *this");
             } else {
                 // Call to an object member or superclass of member

@@ -183,7 +183,7 @@ public class ClassModel{
    /**
     * Determine if this is the superclass of some other class.
     * 
-    * @param otherClass The class to compare against
+    * @param other The class to compare against
     * @return true if 'this' a superclass of another class   
     */
    public boolean isSuperClass(Class<?> other) {
@@ -986,6 +986,15 @@ public class ClassModel{
 
          public ClassEntry getClassEntry() {
             return (ConstantPool.this.getClassEntry(referenceClassIndex));
+         }
+
+         public Class<?> asJavaClass() {
+            String name = getClassEntry().getNameUTF8Entry().getUTF8().replace('/', '.');
+            try {
+               return Class.forName(name);
+            } catch (ClassNotFoundException e) {
+               return null;
+            }
          }
 
          public int getClassIndex() {
@@ -2296,6 +2305,14 @@ public class ClassModel{
             e.printStackTrace();
             return null;
          }
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+         if (! (obj instanceof ClassModelField)) return false;
+         ClassModelField model = (ClassModelField) obj;
+
+         return getName().equals(model.getName()) && getDeclaringClass().equals(model.getDeclaringClass());
       }
    }
 

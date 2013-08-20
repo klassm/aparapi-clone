@@ -297,34 +297,34 @@ public class KernelRunner extends KernelRunnerJNI {
 
          for (int passId = 0; passId < _passes; passId++) {
             /**
-              * Note that we emulate OpenCL by creating one thread per localId (across the group).
-              *
-              * So threadCount == range.getLocalSize(0)*range.getLocalSize(1)*range.getLocalSize(2);
-              *
-              * For a 1D range of 12 groups of 4 we create 4 threads. One per localId(0).
-              *
-              * We also clone the kernel 4 times. One per thread.
-              *
-              * We create local barrier which has a width of 4
-              *
-              *    Thread-0 handles localId(0) (global 0,4,8)
-              *    Thread-1 handles localId(1) (global 1,5,7)
-              *    Thread-2 handles localId(2) (global 2,6,10)
-              *    Thread-3 handles localId(3) (global 3,7,11)
-              *
-              * This allows all threads to synchronize using the local barrier.
-              *
-              * Initially the use of local buffers seems broken as the buffers appears to be per Kernel.
-              * Thankfully Kernel.clone() performs a shallow clone of all buffers (local and global)
-              * So each of the cloned kernels actually still reference the same underlying local/global buffers.
-              *
-              * If the kernel uses local buffers but does not use barriers then it is possible for different groups
-              * to see mutations from each other (unlike OpenCL), however if the kernel does not us barriers then it
-              * cannot assume any coherence in OpenCL mode either (the failure mode will be different but still wrong)
-              *
-              * So even JTP mode use of local buffers will need to use barriers. Not for the same reason as OpenCL but to keep groups in lockstep.
-              *
-              **/
+             * Note that we emulate OpenCL by creating one thread per localId (across the group).
+             *
+             * So threadCount == range.getLocalSize(0)*range.getLocalSize(1)*range.getLocalSize(2);
+             *
+             * For a 1D range of 12 groups of 4 we create 4 threads. One per localId(0).
+             *
+             * We also clone the kernel 4 times. One per thread.
+             *
+             * We create local barrier which has a width of 4
+             *
+             *    Thread-0 handles localId(0) (global 0,4,8)
+             *    Thread-1 handles localId(1) (global 1,5,7)
+             *    Thread-2 handles localId(2) (global 2,6,10)
+             *    Thread-3 handles localId(3) (global 3,7,11)
+             *
+             * This allows all threads to synchronize using the local barrier.
+             *
+             * Initially the use of local buffers seems broken as the buffers appears to be per Kernel.
+             * Thankfully Kernel.clone() performs a shallow clone of all buffers (local and global)
+             * So each of the cloned kernels actually still reference the same underlying local/global buffers.
+             *
+             * If the kernel uses local buffers but does not use barriers then it is possible for different groups
+             * to see mutations from each other (unlike OpenCL), however if the kernel does not us barriers then it
+             * cannot assume any coherence in OpenCL mode either (the failure mode will be different but still wrong)
+             *
+             * So even JTP mode use of local buffers will need to use barriers. Not for the same reason as OpenCL but to keep groups in lockstep.
+             *
+             **/
             for (int id = 0; id < threads; id++) {
                final int threadId = id;
 
@@ -752,8 +752,22 @@ public class KernelRunner extends KernelRunnerJNI {
       for (KernelArg arg : kernelMapping.kernelArgs) {
          try {
             if ((arg.getType() & ARG_ARRAY) != 0) {
-               Object newArrayRef;
-               newArrayRef = arg.getField().get(kernel);
+               String inlineReferencePath = arg.getInlineReferencePath();
+
+               // Find out the original base reference by walking the inline path and updating the reference using
+               // reflection.
+               Object baseRef = kernel;
+               if (inlineReferencePath != null && !inlineReferencePath.equals("")) {
+                  String[] parts = inlineReferencePath.split("\\.");
+                  for (String part : parts) {
+                     Class<?> cls = baseRef.getClass();
+                     Field partField = cls.getDeclaredField(part);
+                     partField.setAccessible(true);
+                     baseRef = partField.get(baseRef);
+                  }
+               }
+
+               Object newArrayRef = arg.getField().get(baseRef);
 
                if (newArrayRef == null) {
                   throw new IllegalStateException("Cannot send null refs to kernel, reverting to java");
@@ -790,6 +804,8 @@ public class KernelRunner extends KernelRunnerJNI {
             logger.log(Level.SEVERE, "IllegalArgumentException during update kernel refs", e);
          } catch (final IllegalAccessException e) {
             logger.log(Level.SEVERE, "IllegalAccessException during update kernel refs", e);
+         } catch (NoSuchFieldException e) {
+            logger.log(Level.SEVERE, "cannot find field for inlinePath: " + arg.getInlineReferencePath(), e);
          }
       }
       return needsSync;
@@ -880,7 +896,7 @@ public class KernelRunner extends KernelRunnerJNI {
    }
 
    synchronized private KernelRunner warnFallBackAndExecute(Kernel kernel, final Range _range, final int _passes,
-         Exception _exception) {
+                                                            Exception _exception) {
       if (logger.isLoggable(Level.WARNING)) {
          logger.warning("Reverting to Java Thread Pool (JTP) for " + kernel.getClass() + ": " + _exception.getMessage());
          _exception.printStackTrace();
@@ -949,7 +965,7 @@ public class KernelRunner extends KernelRunnerJNI {
                         logger.severe("expected execution device: " + lastGPUExecutionDevice.toString());
                         logger.severe("current execution device: " + openCLDevice.toString());
                         throw new IllegalArgumentException("GPU device can only be set once! Please always " +
-                            "use the same device!");
+                              "use the same device!");
                      }
 
                      int jniFlags = 0;
@@ -1126,6 +1142,7 @@ public class KernelRunner extends KernelRunnerJNI {
       KernelArg currentArgument = new KernelArg();
       currentArgument.setName(field.getName());
       currentArgument.setField(field);
+      currentArgument.setInlineReferencePath(entryPoint.getInlineReferencePathFor(field));
       if ((field.getModifiers() & Modifier.STATIC) == Modifier.STATIC) {
          currentArgument.setType(currentArgument.getType() | ARG_STATIC);
       }
@@ -1164,7 +1181,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
       if (logger.isLoggable(Level.FINE)) {
          logger.fine("arg " + currentArgument.getName() + ", type=" + Integer.toHexString(currentArgument.getType())
-             + ", primitiveSize=" + currentArgument.getPrimitiveSize());
+               + ", primitiveSize=" + currentArgument.getPrimitiveSize());
       }
       return currentArgument;
    }
@@ -1182,7 +1199,7 @@ public class KernelRunner extends KernelRunnerJNI {
       if (field.getAnnotation(Local.class) != null || kernelArg.getName().endsWith(Local.LOCAL_SUFFIX)) {
          kernelArg.setType(kernelArg.getType() | ARG_LOCAL);
       } else if ((field.getAnnotation(Constant.class) != null)
-          || kernelArg.getName().endsWith(Constant.CONSTANT_SUFFIX)) {
+            || kernelArg.getName().endsWith(Constant.CONSTANT_SUFFIX)) {
          kernelArg.setType(kernelArg.getType() | ARG_CONSTANT);
       } else {
          kernelArg.setType(kernelArg.getType() | ARG_GLOBAL);
@@ -1193,18 +1210,18 @@ public class KernelRunner extends KernelRunnerJNI {
       // for now, treat all write arrays as read-write, see bugzilla issue 4859
       // we might come up with a better solution later
       kernelArg.setType(kernelArg.getType()
-          | (entryPoint.getArrayFieldAssignments().contains(field.getName()) ? (ARG_WRITE | ARG_READ) : 0));
+            | (entryPoint.getArrayFieldAssignments().contains(field.getName()) ? (ARG_WRITE | ARG_READ) : 0));
       kernelArg.setType(kernelArg.getType()
-          | (entryPoint.getArrayFieldAccesses().contains(field.getName()) ? ARG_READ : 0));
+            | (entryPoint.getArrayFieldAccesses().contains(field.getName()) ? ARG_READ : 0));
       // args[i].type |= ARG_GLOBAL;
 
 
       if (type.getName().startsWith("[L")) {
          kernelArg.setType(kernelArg.getType()
-             | (ARG_OBJ_ARRAY_STRUCT |
-             ARG_WRITE |
-             ARG_READ |
-             ARG_APARAPI_BUFFER));
+               | (ARG_OBJ_ARRAY_STRUCT |
+               ARG_WRITE |
+               ARG_READ |
+               ARG_APARAPI_BUFFER));
 
          if (logger.isLoggable(Level.FINE)) {
             logger.fine("tagging " + kernelArg.getName() + " as (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ)");

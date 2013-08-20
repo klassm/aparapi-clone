@@ -18,9 +18,9 @@ import java.util.logging.Logger;
 public class VirtualMethodEntry {
    protected static Logger logger = Logger.getLogger(Config.getLoggerName());
 
-   protected final List<ClassModel.ClassModelField> referencedClassModelFields = new ArrayList<ClassModel.ClassModelField>();
+   protected final Set<ClassModel.ClassModelField> referencedClassModelFields = new HashSet<ClassModel.ClassModelField>();
 
-   protected final List<Field> referencedFields = new ArrayList<Field>();
+   protected final Set<Field> referencedFields = new HashSet<Field>();
 
    protected final boolean fallback = false;
 
@@ -56,9 +56,16 @@ public class VirtualMethodEntry {
    protected List<VirtualMethodEntry> virtualMethodEntryReferenceList = new ArrayList<VirtualMethodEntry>();
 
    /**
+    * A set of method names referenced in other objects for inlining.
+    */
+   protected Set<String> virtualMethodNames = new HashSet<String>();
+
+   /**
     * Name of fields used for virtual method calls.
     */
-   protected Set<String> virtualMethodFieldNames = new HashSet<String>();
+   protected Set<String> virtualFieldNames = new HashSet<String>();
+
+   protected Map<Field, String> inlineReferencePathMapping = new HashMap<Field, String>();
 
    /**
     *  True is an indication to use the fp64 pragma
@@ -81,6 +88,7 @@ public class VirtualMethodEntry {
       classModel = _classModel;
 
       init();
+      updateReferencedFieldsForVirtualMethodCalls();
    }
 
    public static Field getFieldFromClassHierarchy(Class<?> _clazz, String _name) throws AparapiException {
@@ -370,6 +378,12 @@ public class VirtualMethodEntry {
          }
       }
 
+      boolean isVirtualMethodCall = methodCall instanceof InstructionSet.I_INVOKEVIRTUAL;
+      String accessedFieldName = null;
+      if (isVirtualMethodCall) {
+         accessedFieldName = ((InstructionSet.I_INVOKEVIRTUAL) methodCall).getVirtualMethodInvokeFieldName();
+      }
+
       ClassModel.ClassModelMethod m = classModel.getMethod(methodEntry, (methodCall instanceof InstructionSet.I_INVOKESPECIAL) ? true : false);
 
       // Did not find method in this class or supers. Look for data member object arrays
@@ -382,6 +396,8 @@ public class VirtualMethodEntry {
          for (ClassModel c : allFieldsClasses.values()) {
             if (c.getClassWeAreModelling().getName()
                   .equals(methodEntry.getClassEntry().getNameUTF8Entry().getUTF8().replace('/', '.'))) {
+               if (methodEntry.asJavaClass().isAnnotationPresent(InlineClass.class)) continue;
+
                m = c.getMethod(methodEntry, (methodCall instanceof InstructionSet.I_INVOKESPECIAL) ? true : false);
                assert m != null;
                break;
@@ -401,9 +417,8 @@ public class VirtualMethodEntry {
          m = otherClassModel.getMethod(methodEntry, false);
       }
 
-      if ((m == null) && !isMapped && (methodCall instanceof InstructionSet.I_INVOKEVIRTUAL)) {
-         String fieldName = ((InstructionSet.I_INVOKEVIRTUAL) methodCall).getVirtualMethodInvokeFieldName();
-         virtualMethodFieldNames.add(fieldName);
+
+      if ((m == null) && !isMapped && isVirtualMethodCall) {
 
          String otherClassName = methodEntry.getClassEntry().getNameUTF8Entry().getUTF8().replace('/', '.');
          ClassModel otherClassModel = getOrUpdateAllClassAccesses(otherClassName);
@@ -414,8 +429,18 @@ public class VirtualMethodEntry {
          m = otherClassModel.getMethod(methodName, methodDescriptor);
 
          if (m != null) {
-            VirtualMethodEntry otherVirtualMethodEntry = new VirtualMethodEntry(new MethodModel(m), otherClassModel);
+            MethodModel virtualMethodModel = new MethodModel(m);
+            VirtualMethodEntry otherVirtualMethodEntry = new VirtualMethodEntry(virtualMethodModel, otherClassModel);
+
+            for (Field referencedField : otherVirtualMethodEntry.referencedFields) {
+               if (! otherVirtualMethodEntry.isFieldVirtual(referencedField.getName())) {
+                  inlineReferencePathMapping.put(referencedField, accessedFieldName);
+               }
+            }
+
+            virtualFieldNames.add(accessedFieldName);
             virtualMethodEntryReferenceList.add(otherVirtualMethodEntry);
+            virtualMethodNames.add(virtualMethodModel.getName());
          }
       }
 
@@ -430,11 +455,11 @@ public class VirtualMethodEntry {
       return (fallback);
    }
 
-   public List<ClassModel.ClassModelField> getReferencedClassModelFields() {
+   public Set<ClassModel.ClassModelField> getReferencedClassModelFields() {
       return (referencedClassModelFields);
    }
 
-   public List<Field> getReferencedFields() {
+   public Set<Field> getReferencedFields() {
       return (referencedFields);
    }
 
@@ -527,7 +552,6 @@ public class VirtualMethodEntry {
 
       if (_methodCall instanceof InstructionSet.I_INVOKEVIRTUAL) {
          String fieldName = ((InstructionSet.I_INVOKEVIRTUAL) _methodCall).getVirtualMethodInvokeFieldName();
-         System.out.println(fieldName);
       }
 
       assert target == null : "Should not have missed a method in calledMethods";
@@ -913,5 +937,47 @@ public class VirtualMethodEntry {
             logger.fine("Enabling byte addressable on " + methodModel.getName());
          }
       }
+   }
+
+   /**
+    * Remove all {@link InlineClass} references from the referenced field lists and add all the attributes
+    * from within the referenced inline classes.
+    * The containers holding all the references are sets, so we do not need to care about checking whether the
+    * fields are already contained.
+    */
+   private void updateReferencedFieldsForVirtualMethodCalls() {
+      ArrayList<Field> referencedFieldsClone = new ArrayList<Field>(referencedFields);
+      ArrayList<ClassModel.ClassModelField> classModelFieldsClone =
+            new ArrayList<ClassModel.ClassModelField>(referencedClassModelFields);
+
+      for (Field field : referencedFieldsClone) {
+         if (field.getType().isAnnotationPresent(InlineClass.class)) {
+            referencedFields.remove(field);
+            referencedFieldNames.remove(field.getName());
+            for (ClassModel.ClassModelField referencedClassModelField : classModelFieldsClone) {
+               if (referencedClassModelField.getName().equals(field.getName())) {
+                  referencedClassModelFields.remove(referencedClassModelField);
+               }
+            }
+         }
+      }
+
+      for (VirtualMethodEntry virtualMethodEntry : virtualMethodEntryReferenceList) {
+         referencedFields.addAll(virtualMethodEntry.referencedFields);
+         referencedFieldNames.addAll(virtualMethodEntry.referencedFieldNames);
+         referencedClassModelFields.addAll(virtualMethodEntry.referencedClassModelFields);
+      }
+   }
+
+   public boolean isFieldVirtual(String fieldName) {
+      return virtualFieldNames.contains(fieldName);
+   }
+
+   public boolean isVirtualMethod(String methodName) {
+      return virtualMethodNames.contains(methodName);
+   }
+
+   public String getInlineReferencePathFor(Field field) {
+      return inlineReferencePathMapping.get(field);
    }
 }
