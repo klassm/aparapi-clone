@@ -302,8 +302,10 @@ public abstract class KernelWriter extends BlockWriter{
 
       entryPoint = _entryPoint;
 
-      VirtualMethodEntry entry = _entryPoint;
-      writeClassModelFields(thisStruct, argLines, assigns, entry);
+      List<String> writtenFieldNames = new ArrayList<String>();
+      for (VirtualMethodEntry virtualMethodEntry : _entryPoint.listAllVirtualMethodEntries()) {
+         writeClassModelFields(thisStruct, argLines, assigns, virtualMethodEntry, writtenFieldNames);
+      }
 
       if (Config.enableByteWrites || _entryPoint.requiresByteAddressableStorePragma()) {
          // Starting with OpenCL 1.1 (which is as far back as we support)
@@ -504,7 +506,7 @@ public abstract class KernelWriter extends BlockWriter{
       newLine();
    }
 
-   private void writeClassModelFields(List<String> thisStruct, List<String> argLines, List<String> assigns, VirtualMethodEntry entry) {
+   private void writeClassModelFields(List<String> thisStruct, List<String> argLines, List<String> assigns, VirtualMethodEntry entry, List<String> writtenFieldNames) {
       for (final ClassModelField field : entry.getReferencedClassModelFields()) {
          // Field field = _entryPoint.getClassModel().getField(f.getName());
          final StringBuilder thisStructLine = new StringBuilder();
@@ -519,6 +521,8 @@ public abstract class KernelWriter extends BlockWriter{
 
          // check the suffix
          String fieldName = entry.getCallPath() + field.getName();
+         if (writtenFieldNames.contains(fieldName)) continue;
+         writtenFieldNames.add(fieldName);
 
          String type = fieldName.endsWith(com.amd.aparapi.annotation.Local.LOCAL_SUFFIX) ? __local
                : (fieldName.endsWith(com.amd.aparapi.annotation.Constant.CONSTANT_SUFFIX) ? __constant : __global);
@@ -627,10 +631,6 @@ public abstract class KernelWriter extends BlockWriter{
             }
          }
       }
-
-      for (VirtualMethodEntry virtualMethodEntry : entry.getVirtualMethodEntryReferenceList()) {
-         writeClassModelFields(thisStruct, argLines, assigns, virtualMethodEntry);
-      }
    }
 
    private void writeMethodSignature(VirtualMethodEntry entry, MethodModel mm) {
@@ -642,7 +642,7 @@ public abstract class KernelWriter extends BlockWriter{
       write(convertType(returnType, true));
 
       String name = mm.getName();
-      write(entry.getCallPath() + name + "(");
+      write(name + "(");
 
       if (!mm.getMethod().isStatic()) {
          if ((mm.getMethod().getClassModel() == entry.getClassModel())

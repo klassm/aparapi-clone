@@ -49,6 +49,7 @@ import com.amd.aparapi.internal.instruction.InstructionSet.TypeSpec;
 import com.amd.aparapi.internal.jni.KernelRunnerJNI;
 import com.amd.aparapi.internal.model.ClassModel;
 import com.amd.aparapi.internal.model.Entrypoint;
+import com.amd.aparapi.internal.model.VirtualMethodEntry;
 import com.amd.aparapi.internal.util.UnsafeWrapper;
 import com.amd.aparapi.internal.writer.KernelWriter;
 import com.amd.aparapi.opencl.OpenCL;
@@ -442,18 +443,18 @@ public class KernelRunner extends KernelRunnerJNI {
                            kernelState.setLocalId(2, (threadId / (_range.getLocalSize(0) * _range.getLocalSize(1))));
 
                            kernelState.setGlobalId(
-                                 0,
-                                 (((globalGroupId % _range.getNumGroups(0)) * _range.getLocalSize(0)) + kernelState.getLocalIds()[0]));
+                               0,
+                               (((globalGroupId % _range.getNumGroups(0)) * _range.getLocalSize(0)) + kernelState.getLocalIds()[0]));
 
                            kernelState.setGlobalId(
-                                 1,
-                                 ((((globalGroupId / _range.getNumGroups(0)) * _range.getLocalSize(1)) % _range.getGlobalSize(1)) + kernelState
-                                       .getLocalIds()[1]));
+                               1,
+                               ((((globalGroupId / _range.getNumGroups(0)) * _range.getLocalSize(1)) % _range.getGlobalSize(1)) + kernelState
+                                   .getLocalIds()[1]));
 
                            kernelState.setGlobalId(
-                                 2,
-                                 (((globalGroupId / (_range.getNumGroups(0) * _range.getNumGroups(1))) * _range.getLocalSize(2)) + kernelState
-                                       .getLocalIds()[2]));
+                               2,
+                               (((globalGroupId / (_range.getNumGroups(0) * _range.getNumGroups(1))) * _range.getLocalSize(2)) + kernelState
+                                   .getLocalIds()[2]));
 
                            kernelState.setGroupId(0, (globalGroupId % _range.getNumGroups(0)));
                            kernelState.setGroupId(1, ((globalGroupId / _range.getNumGroups(0)) % _range.getNumGroups(1)));
@@ -522,7 +523,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
       if (logger.isLoggable(Level.FINEST)) {
          logger.finest("Syncing obj array type = " + arrayClass + " cvtd= " + c.getClassWeAreModelling().getName()
-               + "arrayBaseOffset=" + arrayBaseOffset + " arrayScale=" + arrayScale);
+             + "arrayBaseOffset=" + arrayBaseOffset + " arrayScale=" + arrayScale);
       }
 
       int objArraySize = 0;
@@ -547,7 +548,7 @@ public class KernelRunner extends KernelRunnerJNI {
          didReallocate = true;
          if (logger.isLoggable(Level.FINEST)) {
             logger.finest("objArraySize = " + objArraySize + " totalStructSize= " + totalStructSize + " totalBufferSize="
-                  + totalBufferSize);
+                + totalBufferSize);
          }
       } else {
          arg.getObjArrayByteBuffer().clear();
@@ -568,7 +569,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
             if (logger.isLoggable(Level.FINEST)) {
                logger.finest("name = " + c.getStructMembers().get(i).getNameAndTypeEntry().getNameUTF8Entry().getUTF8() + " t= "
-                     + t);
+                   + t);
             }
 
             switch (t) {
@@ -793,7 +794,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
                   if (logger.isLoggable(Level.FINE)) {
                      logger.fine("saw newArrayRef for " + arg.getName() + " = " + newArrayRef + ", newArrayLen = "
-                           + Array.getLength(newArrayRef));
+                         + Array.getLength(newArrayRef));
                   }
                }
 
@@ -965,7 +966,7 @@ public class KernelRunner extends KernelRunnerJNI {
                         logger.severe("expected execution device: " + lastGPUExecutionDevice.toString());
                         logger.severe("current execution device: " + openCLDevice.toString());
                         throw new IllegalArgumentException("GPU device can only be set once! Please always " +
-                              "use the same device!");
+                            "use the same device!");
                      }
 
                      int jniFlags = 0;
@@ -980,7 +981,7 @@ public class KernelRunner extends KernelRunnerJNI {
                            openCLDevice = (OpenCLDevice) OpenCLDevice.firstCPU();
                            if (openCLDevice == null) {
                               return warnFallBackAndExecute(kernel, _range, _passes,
-                                    "CPU request can't be honored not CPU device");
+                                  "CPU request can't be honored not CPU device");
                            }
                         }
                      } else {
@@ -1026,12 +1027,12 @@ public class KernelRunner extends KernelRunnerJNI {
 
                   if (entryPoint.requiresByteAddressableStorePragma() && !hasByteAddressableStoreSupport()) {
                      return warnFallBackAndExecute(kernel, _range, _passes,
-                           "Byte addressable stores required but not supported");
+                         "Byte addressable stores required but not supported");
                   }
 
                   final boolean all32AtomicsAvailable = hasGlobalInt32BaseAtomicsSupport()
-                        && hasGlobalInt32ExtendedAtomicsSupport() && hasLocalInt32BaseAtomicsSupport()
-                        && hasLocalInt32ExtendedAtomicsSupport();
+                      && hasGlobalInt32ExtendedAtomicsSupport() && hasLocalInt32BaseAtomicsSupport()
+                      && hasLocalInt32ExtendedAtomicsSupport();
 
                   if (entryPoint.requiresAtomic32Pragma() && !all32AtomicsAvailable) {
 
@@ -1070,7 +1071,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
                   KernelArg[] kernelArgsArray = currentKernelMapping.kernelArgsAsArray();
                   setArgsJNI(kernelRunnerContextHandle, currentKernelMapping.kernelContextHandle,
-                        kernelArgsArray, kernelArgsArray.length);
+                      kernelArgsArray, kernelArgsArray.length);
 
                   conversionTime = System.currentTimeMillis() - executeStartTime;
 
@@ -1091,7 +1092,7 @@ public class KernelRunner extends KernelRunnerJNI {
             }
          } else {
             warnFallBackAndExecute(kernel, _range, _passes,
-                  "OpenCL was requested but Device supplied was not an OpenCLDevice");
+                "OpenCL was requested but Device supplied was not an OpenCLDevice");
          }
       } else {
          executeJava(kernel, _range, _passes);
@@ -1116,15 +1117,24 @@ public class KernelRunner extends KernelRunnerJNI {
    private List<KernelArg> findOutKernelArgsIn(Entrypoint entryPoint, Kernel kernel) {
       List<KernelArg> resultArgs = new ArrayList<KernelArg>();
 
-      for (final Field field : entryPoint.getReferencedFields()) {
-         try {
-            field.setAccessible(true);
-            KernelArg currentArgument = fieldToKernelArg(entryPoint, kernel, field);
-            if (currentArgument == null) return null;
+      List<String> writtenFields = new ArrayList<String>();
+      for (VirtualMethodEntry virtualMethodEntry : entryPoint.listAllVirtualMethodEntries()) {
+         for (final Field field : virtualMethodEntry.getReferencedFields()) {
+            String fieldName = virtualMethodEntry.getCallPath() + field.getName();
+            if (writtenFields.contains(fieldName)) {
+               continue;
+            }
+            writtenFields.add(fieldName);
 
-            resultArgs.add(currentArgument);
-         } catch (final IllegalArgumentException e) {
-            logger.log(Level.SEVERE, "IllegalArgumentException encountered during handling of field " + field.toString(), e);
+            try {
+               field.setAccessible(true);
+               KernelArg currentArgument = fieldToKernelArg(virtualMethodEntry, kernel, field);
+               if (currentArgument == null) return null;
+
+               resultArgs.add(currentArgument);
+            } catch (final IllegalArgumentException e) {
+               logger.log(Level.SEVERE, "IllegalArgumentException encountered during handling of field " + field.toString(), e);
+            }
          }
       }
 
@@ -1133,16 +1143,16 @@ public class KernelRunner extends KernelRunnerJNI {
 
    /**
     * Fills a new {@link KernelArg} object with data from a given {@link Entrypoint}, {@link Kernel} and {@link Field}.
-    * @param entryPoint entryPoint
+    * @param virtualMethodEntry virtualMethodEntry
     * @param kernel kernel
     * @param field field
     * @return filled {@link KernelArg}
     */
-   private KernelArg fieldToKernelArg(Entrypoint entryPoint, Kernel kernel, Field field) {
+   private KernelArg fieldToKernelArg(VirtualMethodEntry virtualMethodEntry, Kernel kernel, Field field) {
       KernelArg currentArgument = new KernelArg();
       currentArgument.setName(field.getName());
       currentArgument.setField(field);
-      currentArgument.setInlineReferencePath(entryPoint.getInlineReferencePathFor(field));
+      currentArgument.setInlineReferencePath(virtualMethodEntry.getInlineReferencePathFor(field));
       if ((field.getModifiers() & Modifier.STATIC) == Modifier.STATIC) {
          currentArgument.setType(currentArgument.getType() | ARG_STATIC);
       }
@@ -1150,7 +1160,7 @@ public class KernelRunner extends KernelRunnerJNI {
       final Class<?> type = field.getType();
       if (type.isArray()) {
 
-         if (! handleArrayTypeKernelArg(entryPoint, kernel, field, currentArgument, type)) return null;
+         if (! handleArrayTypeKernelArg(virtualMethodEntry, kernel, field, currentArgument, type)) return null;
       } else if (type.isAssignableFrom(float.class)) {
          currentArgument.setType(currentArgument.getType() | ARG_PRIMITIVE);
          currentArgument.setType(currentArgument.getType() | ARG_FLOAT);
@@ -1181,7 +1191,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
       if (logger.isLoggable(Level.FINE)) {
          logger.fine("arg " + currentArgument.getName() + ", type=" + Integer.toHexString(currentArgument.getType())
-               + ", primitiveSize=" + currentArgument.getPrimitiveSize());
+             + ", primitiveSize=" + currentArgument.getPrimitiveSize());
       }
       return currentArgument;
    }
@@ -1195,11 +1205,11 @@ public class KernelRunner extends KernelRunnerJNI {
     * @param type field type
     * @return true if the array was successfully handled, false if an error has been encountered
     */
-   private boolean handleArrayTypeKernelArg(Entrypoint entryPoint, Kernel kernel, Field field, KernelArg kernelArg, Class<?> type) {
+   private boolean handleArrayTypeKernelArg(VirtualMethodEntry entryPoint, Kernel kernel, Field field, KernelArg kernelArg, Class<?> type) {
       if (field.getAnnotation(Local.class) != null || kernelArg.getName().endsWith(Local.LOCAL_SUFFIX)) {
          kernelArg.setType(kernelArg.getType() | ARG_LOCAL);
       } else if ((field.getAnnotation(Constant.class) != null)
-            || kernelArg.getName().endsWith(Constant.CONSTANT_SUFFIX)) {
+          || kernelArg.getName().endsWith(Constant.CONSTANT_SUFFIX)) {
          kernelArg.setType(kernelArg.getType() | ARG_CONSTANT);
       } else {
          kernelArg.setType(kernelArg.getType() | ARG_GLOBAL);
@@ -1210,18 +1220,18 @@ public class KernelRunner extends KernelRunnerJNI {
       // for now, treat all write arrays as read-write, see bugzilla issue 4859
       // we might come up with a better solution later
       kernelArg.setType(kernelArg.getType()
-            | (entryPoint.getArrayFieldAssignments().contains(field.getName()) ? (ARG_WRITE | ARG_READ) : 0));
+          | (entryPoint.getArrayFieldAssignments().contains(field.getName()) ? (ARG_WRITE | ARG_READ) : 0));
       kernelArg.setType(kernelArg.getType()
-            | (entryPoint.getArrayFieldAccesses().contains(field.getName()) ? ARG_READ : 0));
+          | (entryPoint.getArrayFieldAccesses().contains(field.getName()) ? ARG_READ : 0));
       // args[i].type |= ARG_GLOBAL;
 
 
       if (type.getName().startsWith("[L")) {
          kernelArg.setType(kernelArg.getType()
-               | (ARG_OBJ_ARRAY_STRUCT |
-               ARG_WRITE |
-               ARG_READ |
-               ARG_APARAPI_BUFFER));
+             | (ARG_OBJ_ARRAY_STRUCT |
+             ARG_WRITE |
+             ARG_READ |
+             ARG_APARAPI_BUFFER));
 
          if (logger.isLoggable(Level.FINE)) {
             logger.fine("tagging " + kernelArg.getName() + " as (ARG_OBJ_ARRAY_STRUCT | ARG_WRITE | ARG_READ)");
@@ -1867,7 +1877,7 @@ public class KernelRunner extends KernelRunnerJNI {
     */
    private void getRaw(Object array) {
       if (explicit
-            && ((getExecutionMode() == EXECUTION_MODE.GPU) || (getExecutionMode() == EXECUTION_MODE.CPU))) {
+          && ((getExecutionMode() == EXECUTION_MODE.GPU) || (getExecutionMode() == EXECUTION_MODE.CPU))) {
          // Only makes sense when we are using OpenCL
          getJNI(kernelRunnerContextHandle, array);
       }
@@ -1902,7 +1912,7 @@ public class KernelRunner extends KernelRunnerJNI {
 
    private void putRaw(Object array) {
       if (explicit
-            && ((getExecutionMode() == EXECUTION_MODE.GPU) || (getExecutionMode() == EXECUTION_MODE.CPU))) {
+          && ((getExecutionMode() == EXECUTION_MODE.GPU) || (getExecutionMode() == EXECUTION_MODE.CPU))) {
          // Only makes sense when we are using OpenCL
          puts.add(array);
       }

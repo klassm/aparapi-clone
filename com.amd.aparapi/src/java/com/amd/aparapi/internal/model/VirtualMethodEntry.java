@@ -440,14 +440,13 @@ public class VirtualMethodEntry {
 
             for (Field referencedField : otherVirtualMethodEntry.referencedFields) {
                if (! otherVirtualMethodEntry.isFieldVirtual(referencedField.getName())) {
-                  inlineReferencePathMapping.put(referencedField, accessedFieldName);
+                  otherVirtualMethodEntry.inlineReferencePathMapping.put(referencedField, accessedFieldName);
                }
             }
 
             virtualFieldNames.add(accessedFieldName);
             virtualMethods.add(new VirtualMethod(virtualMethodModel, otherVirtualMethodEntry, accessedFieldName));
             virtualMethodEntryReferenceList.add(otherVirtualMethodEntry);
-//            virtualMethodNames.add(virtualMethodModel.getName());
          }
       }
 
@@ -558,8 +557,9 @@ public class VirtualMethodEntry {
       }
 
       if (_methodCall instanceof InstructionSet.I_INVOKEVIRTUAL) {
-         String fieldName = ((InstructionSet.I_INVOKEVIRTUAL) _methodCall).getVirtualMethodInvokeFieldName();
-         VirtualMethod virtualMethod = virtualMethodFor(fieldName);
+         InstructionSet.I_INVOKEVIRTUAL methodCallInstruction = (InstructionSet.I_INVOKEVIRTUAL) _methodCall;
+         String fieldName = methodCallInstruction.getVirtualMethodInvokeFieldName();
+         VirtualMethod virtualMethod = virtualMethodFor(fieldName, _methodEntry.getClassMethodName());
 
          return virtualMethod.getNameWrappedMethodModel();
       }
@@ -569,14 +569,14 @@ public class VirtualMethodEntry {
       return null;
    }
 
-   private VirtualMethod virtualMethodFor(String fieldName) {
+   private VirtualMethod virtualMethodFor(String fieldName, String methodName) {
       for (VirtualMethod virtualMethod : virtualMethods) {
-         if (virtualMethod.getAccessFieldName().equals(fieldName)) {
+         if (virtualMethod.getAccessFieldName().equals(fieldName) && virtualMethod.getMethodModel().getName().equals(methodName)) {
             return virtualMethod;
          }
       }
       for (VirtualMethodEntry virtualMethodEntry : virtualMethodEntryReferenceList) {
-         VirtualMethod virtualMethod = virtualMethodEntry.virtualMethodFor(fieldName);
+         VirtualMethod virtualMethod = virtualMethodEntry.virtualMethodFor(fieldName, methodName);
          if (virtualMethod != null) return virtualMethod;
       }
       return null;
@@ -1041,10 +1041,6 @@ public class VirtualMethodEntry {
    public String getCallPath() {
       if (callPath.equals("")) return "";
       return callPath + "_";
-   }
-
-   public List<VirtualMethodEntry> getVirtualMethodEntryReferenceList() {
-      return virtualMethodEntryReferenceList;
    }
 
    public Set<VirtualMethod> getVirtualMethods() {

@@ -745,6 +745,11 @@ public class ClassModel{
             sb.append(getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8());
             return (sb.toString());
          }
+
+         public String getClassMethodName() {
+            return getClassEntry().getNameUTF8Entry().getUTF8().replaceAll("/", "_") + "__" +
+                getNameAndTypeEntry().getNameUTF8Entry().getUTF8();
+         }
       }
 
       public class NameAndTypeEntry extends Entry{

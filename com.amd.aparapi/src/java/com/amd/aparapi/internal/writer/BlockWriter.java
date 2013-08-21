@@ -772,7 +772,8 @@ public abstract class BlockWriter{
          }
       }
       final int argc = _methodEntry.getStackConsumeCount();
-      write(_methodEntry.getNameAndTypeEntry().getNameUTF8Entry().getUTF8());
+      String methodName = _methodEntry.getNameAndTypeEntry().getNameUTF8Entry().getUTF8();
+      write(methodName);
       write("(");
 
       for (int arg = 0; arg < argc; arg++) {
