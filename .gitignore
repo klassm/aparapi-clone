@@ -12,6 +12,7 @@ dist*
 *.jar
 classes
 *.swp
+com.amd.aparapi/doc
 com.amd.aparapi.jni/include
 com.amd.aparapi.jni/ipch
 com.amd.aparapi.jni/x64

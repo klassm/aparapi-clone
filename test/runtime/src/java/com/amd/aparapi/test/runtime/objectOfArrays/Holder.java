@@ -26,4 +26,8 @@ public class Holder {
    public void get(KernelRunner kernelRunner) {
       kernelRunner.get(data);
    }
+
+   public int[] getData() {
+      return data;
+   }
 }

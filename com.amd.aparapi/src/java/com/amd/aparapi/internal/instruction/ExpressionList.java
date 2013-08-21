@@ -54,7 +54,7 @@ import com.amd.aparapi.internal.instruction.InstructionSet.ConditionalBranch;
 import com.amd.aparapi.internal.instruction.InstructionSet.FakeGoto;
 import com.amd.aparapi.internal.instruction.InstructionSet.Return;
 import com.amd.aparapi.internal.instruction.InstructionSet.UnconditionalBranch;
-import com.amd.aparapi.internal.model.MethodModel;
+import com.amd.aparapi.internal.model.MethodModelRaw;
 import com.amd.aparapi.internal.model.ClassModel.LocalVariableTableEntry;
 import com.amd.aparapi.internal.model.ClassModel.LocalVariableInfo;
 
@@ -70,7 +70,7 @@ public class ExpressionList{
 
    private static Logger logger = Logger.getLogger(Config.getLoggerName());
 
-   private final MethodModel methodModel;
+   private final MethodModelRaw methodModel;
 
    private final ExpressionList parent;
 
@@ -80,7 +80,7 @@ public class ExpressionList{
 
    private final Instruction instruction;
 
-   private ExpressionList(MethodModel _methodModel, ExpressionList _parent, Instruction _instruction) {
+   private ExpressionList(MethodModelRaw _methodModel, ExpressionList _parent, Instruction _instruction) {
 
       methodModel = _methodModel;
       parent = _parent;
@@ -96,7 +96,7 @@ public class ExpressionList{
       }
    }
 
-   public ExpressionList(MethodModel _methodModel) {
+   public ExpressionList(MethodModelRaw _methodModel) {
       this(_methodModel, null, null);
    }
 

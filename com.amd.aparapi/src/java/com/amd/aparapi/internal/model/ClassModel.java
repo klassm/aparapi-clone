@@ -2593,7 +2593,7 @@ public class ClassModel{
    }
 
    /**
-    * Create a MethodModel for a given method name and signature.
+    * Create a MethodModelRaw for a given method name and signature.
     * 
     * @param _name
     * @param _signature
@@ -2601,9 +2601,9 @@ public class ClassModel{
     * @throws AparapiException
     */
 
-   public MethodModel getMethodModel(String _name, String _signature) throws AparapiException {
+   public MethodModelRaw getMethodModel(String _name, String _signature) throws AparapiException {
       final ClassModelMethod method = getMethod(_name, _signature);
-      return new MethodModel(method);
+      return new MethodModelRaw(method);
    }
 
    // These fields use for accessor conversion
@@ -2636,7 +2636,7 @@ public class ClassModel{
    }
 
    Entrypoint getEntrypoint(String _entrypointName, String _descriptor, Object _k) throws AparapiException {
-      final MethodModel method = getMethodModel(_entrypointName, _descriptor);
+      final MethodModelRaw method = getMethodModel(_entrypointName, _descriptor);
       return (new Entrypoint(this, method, _k));
    }
 

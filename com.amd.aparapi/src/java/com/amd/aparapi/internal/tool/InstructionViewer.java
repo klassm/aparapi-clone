@@ -56,12 +56,15 @@ import com.amd.aparapi.internal.instruction.Instruction;
 import com.amd.aparapi.internal.instruction.InstructionSet.CompositeInstruction;
 import com.amd.aparapi.internal.model.ClassModel;
 import com.amd.aparapi.internal.model.Entrypoint;
-import com.amd.aparapi.internal.model.MethodModel;
+import com.amd.aparapi.internal.model.MethodModelRaw;
+import com.amd.aparapi.internal.model.VirtualMethodEntry;
 import com.amd.aparapi.internal.tool.InstructionViewer.Form.Check;
 import com.amd.aparapi.internal.tool.InstructionViewer.Form.Template;
 import com.amd.aparapi.internal.tool.InstructionViewer.Form.Toggle;
 
 public class InstructionViewer implements Config.InstructionListener{
+
+   private static Entrypoint entrypoint;
 
    public static abstract class Form<T extends Form.Template> {
       public @interface OneOf {
@@ -492,11 +495,11 @@ public class InstructionViewer implements Config.InstructionListener{
       return (instructionView);
    }
 
-   double foldPlace(Graphics2D _g, InstructionView _instructionView, double _x, double _y, boolean _dim) {
+   double foldPlace(VirtualMethodEntry virtualMethodEntry, Graphics2D _g, InstructionView _instructionView, double _x, double _y, boolean _dim) {
       _instructionView.dim = _dim;
       final FontMetrics fm = _g.getFontMetrics();
 
-      _instructionView.label = InstructionHelper.getLabel(_instructionView.instruction, config.showPc, config.showExpressions,
+      _instructionView.label = InstructionHelper.getLabel(virtualMethodEntry, _instructionView.instruction, config.showPc, config.showExpressions,
             config.verboseBytecodeLabels);
 
       final int w = fm.stringWidth(_instructionView.label) + HMARGIN;
@@ -509,7 +512,7 @@ public class InstructionViewer implements Config.InstructionListener{
 
          for (Instruction e = _instructionView.instruction.getFirstChild(); e != null; e = e.getNextExpr()) {
 
-            y = foldPlace(_g, getInstructionView(e), x, y, _dim);
+            y = foldPlace(virtualMethodEntry, _g, getInstructionView(e), x, y, _dim);
             if (e != _instructionView.instruction.getLastChild()) {
                y += VGAP;
             }
@@ -599,10 +602,10 @@ public class InstructionViewer implements Config.InstructionListener{
 
    }
 
-   double flatPlace(Graphics2D _g, InstructionView _instructionView, double _x, double _y) {
+   double flatPlace(VirtualMethodEntry virtualMethodEntry, Graphics2D _g, InstructionView _instructionView, double _x, double _y) {
       final FontMetrics fm = _g.getFontMetrics();
       final Instruction instruction = _instructionView.instruction;
-      _instructionView.label = InstructionHelper.getLabel(instruction, config.showPc, config.showExpressions,
+      _instructionView.label = InstructionHelper.getLabel(virtualMethodEntry, instruction, config.showPc, config.showExpressions,
             config.verboseBytecodeLabels);
 
       final int h = fm.getHeight() + 2;
@@ -870,7 +873,7 @@ public class InstructionViewer implements Config.InstructionListener{
             for (Instruction instruction = firstRoot; instruction != null; instruction = instruction.getNextExpr()) {
                final InstructionView iv = getInstructionView(instruction);
                iv.dim = false;
-               y = foldPlace(_g, iv, 100, y, false) + VGAP;
+               y = foldPlace(entrypoint, _g, iv, 100, y, false) + VGAP;
                instructionViews.add(iv);
                lastInstruction = instruction;
             }
@@ -882,7 +885,7 @@ public class InstructionViewer implements Config.InstructionListener{
 
                final InstructionView iv = getInstructionView(instruction);
                iv.dim = true;
-               y = foldPlace(_g, iv, 100, y, true) + VGAP;
+               y = foldPlace(entrypoint, _g, iv, 100, y, true) + VGAP;
                instructionViews.add(iv);
 
             }
@@ -915,7 +918,7 @@ public class InstructionViewer implements Config.InstructionListener{
             double y = 100;
             for (Instruction l = first; l != null; l = l.getNextPC()) {
 
-               y = flatPlace(_g, getInstructionView(l), 100, y) + VGAP;
+               y = flatPlace(entrypoint, _g, getInstructionView(l), 100, y) + VGAP;
 
             }
 
@@ -1099,12 +1102,10 @@ public class InstructionViewer implements Config.InstructionListener{
 
          @Override public void run() {
 
-            Entrypoint entrypoint;
             try {
                entrypoint = instructionViewer.classModel.getEntrypoint();
-               final MethodModel method = entrypoint.getMethodModel();
+               final MethodModelRaw method = entrypoint.getMethodModel();
             } catch (final AparapiException e) {
-               // TODO Auto-generated catch block
                e.printStackTrace();
             }
 

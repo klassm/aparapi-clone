@@ -14,6 +14,7 @@ public class ObjectOfArraysTest {
    @Test
    public void testObjectOfArrays() {
       KernelRunner kernelRunner = new KernelRunner();
+      kernelRunner.setExplicit(true);
 
       int[] data = new int[] { 3, 5, 7, 9, 11, 12};
       int[] dataCopy = Arrays.copyOf(data, data.length);

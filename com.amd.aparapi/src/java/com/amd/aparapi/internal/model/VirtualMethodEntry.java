@@ -39,7 +39,7 @@ public class VirtualMethodEntry {
     */
    protected final Set<String> arrayFieldArrayLengthUsed = new LinkedHashSet<String>();
 
-   protected final List<MethodModel> calledMethods = new ArrayList<MethodModel>();
+   protected final List<MethodModelRaw> calledMethods = new ArrayList<MethodModelRaw>();
 
    /**
     * Supporting classes of object array members like supers
@@ -48,7 +48,7 @@ public class VirtualMethodEntry {
 
    protected ClassModel classModel;
 
-   protected MethodModel methodModel;
+   protected MethodModelRaw methodModel;
 
    /**
     * List of virtual methods called from this class.
@@ -60,11 +60,14 @@ public class VirtualMethodEntry {
     */
    protected Set<String> virtualMethodNames = new HashSet<String>();
 
+   protected Set<VirtualMethod> virtualMethods = new HashSet<VirtualMethod>();
+
    /**
     * Name of fields used for virtual method calls.
     */
    protected Set<String> virtualFieldNames = new HashSet<String>();
 
+   protected String callPath = "";
    protected Map<Field, String> inlineReferencePathMapping = new HashMap<Field, String>();
 
    /**
@@ -83,7 +86,7 @@ public class VirtualMethodEntry {
    private boolean usesAtomic32;
    private boolean usesAtomic64;
 
-   public VirtualMethodEntry(MethodModel _methodModel, ClassModel _classModel) throws AparapiException {
+   public VirtualMethodEntry(MethodModelRaw _methodModel, ClassModel _classModel) throws AparapiException {
       methodModel = _methodModel;
       classModel = _classModel;
 
@@ -197,7 +200,7 @@ public class VirtualMethodEntry {
        * of those classes and the fields in each class
        *
        * It is important to have only one ClassModel for each class used in the kernel
-       * and only one MethodModel per method, so comparison operations work properly.
+       * and only one MethodModelRaw per method, so comparison operations work properly.
        */
    public ClassModel getOrUpdateAllClassAccesses(String className) throws AparapiException {
       ClassModel memberClassModel = allFieldsClasses.get(className);
@@ -429,8 +432,11 @@ public class VirtualMethodEntry {
          m = otherClassModel.getMethod(methodName, methodDescriptor);
 
          if (m != null) {
-            MethodModel virtualMethodModel = new MethodModel(m);
+            MethodModelRaw virtualMethodModel = new MethodModelRaw(m);
             VirtualMethodEntry otherVirtualMethodEntry = new VirtualMethodEntry(virtualMethodModel, otherClassModel);
+
+            otherVirtualMethodEntry.appendToCallPath(callPath);
+            otherVirtualMethodEntry.appendToCallPath(accessedFieldName);
 
             for (Field referencedField : otherVirtualMethodEntry.referencedFields) {
                if (! otherVirtualMethodEntry.isFieldVirtual(referencedField.getName())) {
@@ -439,8 +445,9 @@ public class VirtualMethodEntry {
             }
 
             virtualFieldNames.add(accessedFieldName);
+            virtualMethods.add(new VirtualMethod(virtualMethodModel, otherVirtualMethodEntry, accessedFieldName));
             virtualMethodEntryReferenceList.add(otherVirtualMethodEntry);
-            virtualMethodNames.add(virtualMethodModel.getName());
+//            virtualMethodNames.add(virtualMethodModel.getName());
          }
       }
 
@@ -463,7 +470,7 @@ public class VirtualMethodEntry {
       return (referencedFields);
    }
 
-   public List<MethodModel> getCalledMethods() {
+   public List<MethodModelRaw> getCalledMethods() {
       return calledMethods;
    }
 
@@ -483,7 +490,7 @@ public class VirtualMethodEntry {
       return (arrayFieldArrayLengthUsed);
    }
 
-   public MethodModel getMethodModel() {
+   public MethodModelRaw getMethodModel() {
       return (methodModel);
    }
 
@@ -492,7 +499,7 @@ public class VirtualMethodEntry {
    }
 
    /**
-    * Return the best call target MethodModel by looking in the class hierarchy
+    * Return the best call target MethodModelRaw by looking in the class hierarchy
     * @param _methodEntry MethodEntry for the desired target
     * @return the fully qualified name such as "com_amd_javalabs_opencl_demo_PaternityTest$SimpleKernel__actuallyDoIt"
     */
@@ -525,7 +532,7 @@ public class VirtualMethodEntry {
       }
 
       if (target != null) {
-         for (final MethodModel m : calledMethods) {
+         for (final MethodModelRaw m : calledMethods) {
             if (m.getMethod() == target) {
                if (logger.isLoggable(Level.FINE)) {
                   logger.fine("selected from called methods = " + m.getName());
@@ -536,7 +543,7 @@ public class VirtualMethodEntry {
       }
 
       // Search for static calls to other classes
-      for (MethodModel m : calledMethods) {
+      for (MethodModelRaw m : calledMethods) {
          if (logger.isLoggable(Level.FINE)) {
             logger.fine("Searching for call target: " + _methodEntry + " in " + m.getName());
          }
@@ -552,6 +559,9 @@ public class VirtualMethodEntry {
 
       if (_methodCall instanceof InstructionSet.I_INVOKEVIRTUAL) {
          String fieldName = ((InstructionSet.I_INVOKEVIRTUAL) _methodCall).getVirtualMethodInvokeFieldName();
+         VirtualMethod virtualMethod = virtualMethodFor(fieldName);
+
+         return virtualMethod.getNameWrappedMethodModel();
       }
 
       assert target == null : "Should not have missed a method in calledMethods";
@@ -559,8 +569,21 @@ public class VirtualMethodEntry {
       return null;
    }
 
+   private VirtualMethod virtualMethodFor(String fieldName) {
+      for (VirtualMethod virtualMethod : virtualMethods) {
+         if (virtualMethod.getAccessFieldName().equals(fieldName)) {
+            return virtualMethod;
+         }
+      }
+      for (VirtualMethodEntry virtualMethodEntry : virtualMethodEntryReferenceList) {
+         VirtualMethod virtualMethod = virtualMethodEntry.virtualMethodFor(fieldName);
+         if (virtualMethod != null) return virtualMethod;
+      }
+      return null;
+   }
+
    protected void init() throws AparapiException {
-      final Map<ClassModel.ClassModelMethod, MethodModel> methodMap = new LinkedHashMap<ClassModel.ClassModelMethod, MethodModel>();
+      final Map<ClassModel.ClassModelMethod, MethodModelRaw> methodMap = new LinkedHashMap<ClassModel.ClassModelMethod, MethodModelRaw>();
 
       boolean discovered = true;
 
@@ -569,7 +592,7 @@ public class VirtualMethodEntry {
 
       discovered = collectDirectMethodCalls(methodMap, discovered);
       allCalledMethodsToMethodMap(methodMap, discovered);
-      methodModel.checkForRecursion(new HashSet<MethodModel>());
+      methodModel.checkForRecursion(new HashSet<MethodModelRaw>());
 
       if (logger.isLoggable(Level.FINE)) {
          logger.fine("fallback=" + fallback);
@@ -578,14 +601,16 @@ public class VirtualMethodEntry {
       if (!fallback) {
          handleCalledMethods(methodMap);
 
-         for (final String referencedFieldName : referencedFieldNames) {
-
+         ArrayList<String> referencedFieldNamesTarget = new ArrayList<String>();
+         for (String referencedFieldName : referencedFieldNames) {
             try {
-               final Class<?> clazz = classModel.getClassWeAreModelling();
-               final Field field = getFieldFromClassHierarchy(clazz, referencedFieldName);
-               if (field != null) {
+               Class<?> clazz = classModel.getClassWeAreModelling();
+               Field field = getFieldFromClassHierarchy(clazz, referencedFieldName);
+               if (field != null && ! referencedFieldNamesTarget.contains(referencedFieldName)) {
+                  referencedFieldNamesTarget.add(referencedFieldName);
                   referencedFields.add(field);
-                  final ClassModel.ClassModelField ff = classModel.getField(referencedFieldName);
+
+                  ClassModel.ClassModelField ff = classModel.getField(referencedFieldName);
                   assert ff != null : "ff should not be null for " + clazz.getName() + "." + referencedFieldName;
                   referencedClassModelFields.add(ff);
                }
@@ -593,6 +618,9 @@ public class VirtualMethodEntry {
                e.printStackTrace();
             }
          }
+
+         referencedFieldNames.clear();
+         referencedFieldNames.addAll(referencedFieldNamesTarget);
 
          buildDataForOOPTransform();
       }
@@ -690,10 +718,10 @@ public class VirtualMethodEntry {
       }
    }
 
-   private void handleCalledMethods(Map<ClassModel.ClassModelMethod, MethodModel> methodMap) throws AparapiException {
+   private void handleCalledMethods(Map<ClassModel.ClassModelMethod, MethodModelRaw> methodMap) throws AparapiException {
       calledMethods.addAll(methodMap.values());
       Collections.reverse(calledMethods);
-      final List<MethodModel> methods = new ArrayList<MethodModel>(calledMethods);
+      final List<MethodModelRaw> methods = new ArrayList<MethodModelRaw>(calledMethods);
 
       // add method to the calledMethods so we can include in this list
       methods.add(methodModel);
@@ -701,14 +729,14 @@ public class VirtualMethodEntry {
 
       final Set<String> fieldAccesses = new HashSet<String>();
 
-      for (final MethodModel methodModel : methods) {
+      for (final MethodModelRaw methodModel : methods) {
          handleCalledMethod(fieldAssignments, fieldAccesses, methodModel);
 
 
       }
    }
 
-   private void handleCalledMethod(Set<String> fieldAssignments, Set<String> fieldAccesses, MethodModel methodModel) throws AparapiException {
+   private void handleCalledMethod(Set<String> fieldAssignments, Set<String> fieldAccesses, MethodModelRaw methodModel) throws AparapiException {
       // Record which pragmas we need to enable
       if (methodModel.requiresDoublePragma()) {
          usesDoubles = true;
@@ -874,15 +902,15 @@ public class VirtualMethodEntry {
     * @param discovered
     * @throws com.amd.aparapi.internal.exception.AparapiException
     */
-   private void allCalledMethodsToMethodMap(Map<ClassModel.ClassModelMethod, MethodModel> methodMap, boolean discovered) throws AparapiException {
+   private void allCalledMethodsToMethodMap(Map<ClassModel.ClassModelMethod, MethodModelRaw> methodMap, boolean discovered) throws AparapiException {
       while (!fallback && discovered) {
          discovered = false;
-         for (final MethodModel mm : new ArrayList<MethodModel>(methodMap.values())) {
+         for (final MethodModelRaw mm : new ArrayList<MethodModelRaw>(methodMap.values())) {
             for (final InstructionSet.MethodCall methodCall : mm.getMethodCalls()) {
 
                ClassModel.ClassModelMethod m = resolveCalledMethod(methodCall, classModel);
                if (m != null) {
-                  MethodModel target = null;
+                  MethodModelRaw target = null;
                   if (methodMap.keySet().contains(m)) {
                      // we remove and then add again.  Because this is a LinkedHashMap this
                      // places this at the end of the list underlying the map
@@ -894,7 +922,7 @@ public class VirtualMethodEntry {
                               + " " + m.getDescriptor());
                      }
                   } else {
-                     target = new MethodModel(m, this);
+                     target = new MethodModelRaw(m, this);
                      discovered = true;
                   }
                   methodMap.put(m, target);
@@ -906,12 +934,12 @@ public class VirtualMethodEntry {
       }
    }
 
-   private boolean collectDirectMethodCalls(Map<ClassModel.ClassModelMethod, MethodModel> methodMap, boolean discovered) throws AparapiException {
+   private boolean collectDirectMethodCalls(Map<ClassModel.ClassModelMethod, MethodModelRaw> methodMap, boolean discovered) throws AparapiException {
       for (final InstructionSet.MethodCall methodCall : methodModel.getMethodCalls()) {
 
          ClassModel.ClassModelMethod m = resolveCalledMethod(methodCall, classModel);
          if ((m != null) && !methodMap.keySet().contains(m)) {
-            final MethodModel target = new MethodModel(m, this);
+            final MethodModelRaw target = new MethodModelRaw(m, this);
             methodMap.put(m, target);
             methodModel.getCalledMethods().add(target);
             discovered = true;
@@ -962,11 +990,21 @@ public class VirtualMethodEntry {
          }
       }
 
-      for (VirtualMethodEntry virtualMethodEntry : virtualMethodEntryReferenceList) {
-         addAllIfNotContainedIn(referencedFields, virtualMethodEntry.referencedFields);
-         addAllIfNotContainedIn(referencedFieldNames, virtualMethodEntry.referencedFieldNames);
-         addAllIfNotContainedIn(referencedClassModelFields, virtualMethodEntry.referencedClassModelFields);
+      for (MethodModelRaw calledMethod : new ArrayList<MethodModelRaw>(calledMethods)) {
+         if (isVirtualMethod(calledMethod.getName())) {
+            calledMethods.remove(calledMethod);
+         }
       }
+
+      if (this instanceof Entrypoint) {
+         System.out.println("hallo");
+      }
+//
+//      for (VirtualMethodEntry virtualMethodEntry : virtualMethodEntryReferenceList) {
+//         addAllIfNotContainedIn(referencedFields, virtualMethodEntry.referencedFields);
+//         addAllIfNotContainedIn(referencedFieldNames, virtualMethodEntry.referencedFieldNames);
+//         addAllIfNotContainedIn(referencedClassModelFields, virtualMethodEntry.referencedClassModelFields);
+//      }
    }
 
    private <T> void addAllIfNotContainedIn(List<T> dest, List<T> source) {
@@ -982,10 +1020,44 @@ public class VirtualMethodEntry {
    }
 
    public boolean isVirtualMethod(String methodName) {
-      return virtualMethodNames.contains(methodName);
+      for (VirtualMethod virtualMethod : virtualMethods) {
+         if (virtualMethod.getMethodModel().getName().equals(methodName)) {
+            return true;
+         }
+      }
+      return false;
    }
 
    public String getInlineReferencePathFor(Field field) {
       return inlineReferencePathMapping.get(field);
+   }
+
+   public void appendToCallPath(String callPath) {
+      if (! this.callPath.equals("")) this.callPath += "_";
+
+      this.callPath += callPath;
+   }
+
+   public String getCallPath() {
+      if (callPath.equals("")) return "";
+      return callPath + "_";
+   }
+
+   public List<VirtualMethodEntry> getVirtualMethodEntryReferenceList() {
+      return virtualMethodEntryReferenceList;
+   }
+
+   public Set<VirtualMethod> getVirtualMethods() {
+      return virtualMethods;
+   }
+
+   public List<VirtualMethodEntry> listAllVirtualMethodEntries() {
+      List<VirtualMethodEntry> result = new ArrayList<VirtualMethodEntry>();
+      result.add(this);
+      for (VirtualMethodEntry virtualMethodEntry : virtualMethodEntryReferenceList) {
+         result.addAll(virtualMethodEntry.listAllVirtualMethodEntries());
+      }
+
+      return result;
    }
 }

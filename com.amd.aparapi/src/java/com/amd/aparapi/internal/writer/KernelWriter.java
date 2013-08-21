@@ -60,7 +60,7 @@ import com.amd.aparapi.internal.instruction.InstructionSet.I_IUSHR;
 import com.amd.aparapi.internal.instruction.InstructionSet.I_LUSHR;
 import com.amd.aparapi.internal.instruction.InstructionSet.MethodCall;
 import com.amd.aparapi.internal.instruction.InstructionSet.VirtualMethodCall;
-import com.amd.aparapi.internal.model.ClassModel;
+import com.amd.aparapi.internal.model.*;
 import com.amd.aparapi.internal.model.ClassModel.ClassModelField;
 import com.amd.aparapi.internal.model.ClassModel.LocalVariableInfo;
 import com.amd.aparapi.internal.model.ClassModel.LocalVariableTableEntry;
@@ -68,8 +68,6 @@ import com.amd.aparapi.internal.model.ClassModel.AttributePool.RuntimeAnnotation
 import com.amd.aparapi.internal.model.ClassModel.AttributePool.RuntimeAnnotationsEntry.AnnotationInfo;
 import com.amd.aparapi.internal.model.ClassModel.ConstantPool.FieldEntry;
 import com.amd.aparapi.internal.model.ClassModel.ConstantPool.MethodEntry;
-import com.amd.aparapi.internal.model.Entrypoint;
-import com.amd.aparapi.internal.model.MethodModel;
 import com.amd.aparapi.opencl.OpenCL.Constant;
 import com.amd.aparapi.opencl.OpenCL.Local;
 
@@ -150,7 +148,7 @@ public abstract class KernelWriter extends BlockWriter{
     * These three convert functions are here to perform
     * any type conversion that may be required between
     * Java and OpenCL.
-    * 
+    *
     * @param _typeDesc
     *          String in the Java JNI notation, [I, etc
     * @return Suitably converted string, "char*", etc
@@ -187,7 +185,7 @@ public abstract class KernelWriter extends BlockWriter{
       }
    }
 
-   @Override public void writeMethod(MethodCall _methodCall, MethodEntry _methodEntry) throws CodeGenException {
+   @Override public void writeMethod(VirtualMethodEntry virtualMethodEntry, MethodCall _methodCall, MethodEntry _methodEntry) throws CodeGenException {
 
       // System.out.println("_methodEntry = " + _methodEntry);
       // special case for buffers
@@ -209,7 +207,7 @@ public abstract class KernelWriter extends BlockWriter{
                if ((arg != 0)) {
                   write(", ");
                }
-               writeInstruction(_methodCall.getArg(arg));
+               writeInstruction(virtualMethodEntry, _methodCall.getArg(arg));
             }
             write(")");
          } else {
@@ -255,7 +253,7 @@ public abstract class KernelWriter extends BlockWriter{
                      .getNameUTF8Entry().getUTF8();
                write(" &(this->" + fieldName);
                write("[");
-               writeInstruction(arrayAccess.getArrayIndex());
+               writeInstruction(virtualMethodEntry, arrayAccess.getArrayIndex());
                write("])");
             } else if (i instanceof AccessField &&
                   entryPoint.isFieldVirtual(getFieldNameFromAccessFieldInstruction(i))) {
@@ -268,7 +266,7 @@ public abstract class KernelWriter extends BlockWriter{
             if (((intrinsicMapping == null) && (_methodCall instanceof VirtualMethodCall) && (!isIntrinsic)) || (arg != 0)) {
                write(", ");
             }
-            writeInstruction(_methodCall.getArg(arg));
+            writeInstruction(virtualMethodEntry, _methodCall.getArg(arg));
          }
          write(")");
       }
@@ -304,126 +302,8 @@ public abstract class KernelWriter extends BlockWriter{
 
       entryPoint = _entryPoint;
 
-      for (final ClassModelField field : _entryPoint.getReferencedClassModelFields()) {
-         // Field field = _entryPoint.getClassModel().getField(f.getName());
-         final StringBuilder thisStructLine = new StringBuilder();
-         final StringBuilder argLine = new StringBuilder();
-         final StringBuilder assignLine = new StringBuilder();
-
-         String signature = field.getDescriptor();
-
-         boolean isPointer = false;
-
-         int numDimensions = 0;
-
-         // check the suffix 
-         String type = field.getName().endsWith(com.amd.aparapi.annotation.Local.LOCAL_SUFFIX) ? __local
-               : (field.getName().endsWith(com.amd.aparapi.annotation.Constant.CONSTANT_SUFFIX) ? __constant : __global);
-         final RuntimeAnnotationsEntry visibleAnnotations = field.getAttributePool().getRuntimeVisibleAnnotationsEntry();
-
-         if (visibleAnnotations != null) {
-            for (final AnnotationInfo ai : visibleAnnotations) {
-               final String typeDescriptor = ai.getTypeDescriptor();
-               if (typeDescriptor.equals(LOCAL_ANNOTATION_NAME)) {
-                  type = __local;
-               } else if (typeDescriptor.equals(CONSTANT_ANNOTATION_NAME)) {
-                  type = __constant;
-               }
-            }
-         }
-
-         //if we have a an array we want to mark the object as a pointer
-         //if we have a multiple dimensional array we want to remember the number of dimensions
-         while (signature.startsWith("[")) {
-            if(isPointer == false) {
-               argLine.append(type + " ");
-               thisStructLine.append(type + " ");
-            }
-            isPointer = true;
-            numDimensions++;
-            signature = signature.substring(1);
-         }
-
-         // If it is a converted array of objects, emit the struct param
-         String className = null;
-         if (signature.startsWith("L")) {
-            // Turn Lcom/amd/javalabs/opencl/demo/DummyOOA; into com_amd_javalabs_opencl_demo_DummyOOA for example
-            className = (signature.substring(1, signature.length() - 1)).replace("/", "_");
-            // if (logger.isLoggable(Level.FINE)) {
-            // logger.fine("Examining object parameter: " + signature + " new: " + className);
-            // }
-
-            argLine.append(className);
-            thisStructLine.append(className);
-         } else {
-            argLine.append(convertType(ClassModel.typeName(signature.charAt(0)), false));
-            thisStructLine.append(convertType(ClassModel.typeName(signature.charAt(0)), false));
-         }
-
-         argLine.append(" ");
-         thisStructLine.append(" ");
-
-         if (isPointer) {
-            argLine.append("*");
-            thisStructLine.append("*");
-         }
-         assignLine.append("this->");
-         assignLine.append(field.getName());
-         assignLine.append(" = ");
-         assignLine.append(field.getName());
-         argLine.append(field.getName());
-         thisStructLine.append(field.getName());
-         assigns.add(assignLine.toString());
-         argLines.add(argLine.toString());
-         thisStruct.add(thisStructLine.toString());
-
-         // Add int field into "this" struct for supporting java arraylength op
-         // named like foo__javaArrayLength
-         if (isPointer && _entryPoint.getArrayFieldArrayLengthUsed().contains(field.getName()) ||
-             isPointer && numDimensions > 1) {
-            
-            for(int i = 0; i < numDimensions; i++) {
-               final StringBuilder lenStructLine = new StringBuilder();
-               final StringBuilder lenArgLine = new StringBuilder();
-               final StringBuilder lenAssignLine = new StringBuilder();
-               final StringBuilder dimStructLine = new StringBuilder();
-               final StringBuilder dimArgLine = new StringBuilder();
-               final StringBuilder dimAssignLine = new StringBuilder();
-
-               String lenName = field.getName() + BlockWriter.arrayLengthMangleSuffix +
-                    Integer.toString(i);
-
-               lenStructLine.append("int " + lenName);
-
-               lenAssignLine.append("this->");
-               lenAssignLine.append(lenName);
-               lenAssignLine.append(" = ");
-               lenAssignLine.append(lenName);
-
-               lenArgLine.append("int " + lenName);
-
-               assigns.add(lenAssignLine.toString());
-               argLines.add(lenArgLine.toString());
-               thisStruct.add(lenStructLine.toString());
-
-               String dimName = field.getName() + BlockWriter.arrayDimMangleSuffix +
-                    Integer.toString(i);
-
-               dimStructLine.append("int " + dimName);
-
-               dimAssignLine.append("this->");
-               dimAssignLine.append(dimName);
-               dimAssignLine.append(" = ");
-               dimAssignLine.append(dimName);
-
-               dimArgLine.append("int " + dimName);
-
-               assigns.add(dimAssignLine.toString());
-               argLines.add(dimArgLine.toString());
-               thisStruct.add(dimStructLine.toString());
-            }
-         }
-      }
+      VirtualMethodEntry entry = _entryPoint;
+      writeClassModelFields(thisStruct, argLines, assigns, entry);
 
       if (Config.enableByteWrites || _entryPoint.requiresByteAddressableStorePragma()) {
          // Starting with OpenCL 1.1 (which is as far back as we support)
@@ -546,18 +426,26 @@ public abstract class KernelWriter extends BlockWriter{
       write("}");
       newLine();
 
-       for (final MethodModel mm : _entryPoint.getCalledMethods()) {
-           writeMethodSignature(_entryPoint, mm);
-           write(";");
-           newLine();
-       }
-       for (final MethodModel mm : _entryPoint.getCalledMethods()) {
-           // write declaration :)
+      List<VirtualMethodEntry> virtualMethodEntries = _entryPoint.listAllVirtualMethodEntries();
+      for (VirtualMethodEntry virtualMethodEntry : virtualMethodEntries) {
+         for (final MethodModelRaw mm : virtualMethodEntry.getCalledMethods()) {
+            writeSignature(virtualMethodEntry, mm);
+         }
 
-           writeMethodSignature(_entryPoint, mm);
-           writeMethodBody(mm);
-           newLine();
-       }
+         for (VirtualMethod virtualMethod : virtualMethodEntry.getVirtualMethods()) {
+            writeSignature(virtualMethod.getVirtualMethodEntry(), virtualMethod.getNameWrappedMethodModel());
+         }
+      }
+
+      for (VirtualMethodEntry virtualMethodEntry : virtualMethodEntries) {
+         for (final MethodModelRaw mm : _entryPoint.getCalledMethods()) {
+            writeMethodSignatureAndBody(virtualMethodEntry, mm);
+         }
+
+         for (VirtualMethod virtualMethod : virtualMethodEntry.getVirtualMethods()) {
+            writeMethodSignatureAndBody(virtualMethod.getVirtualMethodEntry(), virtualMethod.getNameWrappedMethodModel());
+         }
+      }
 
 
       write("__kernel void " + _entryPoint.getMethodModel().getSimpleName() + "(");
@@ -597,71 +485,213 @@ public abstract class KernelWriter extends BlockWriter{
       write("this->passid = passid");
       writeln(";");
 
-      writeMethodBody(_entryPoint.getMethodModel());
+      writeMethodBody(_entryPoint, _entryPoint.getMethodModel());
       out();
       newLine();
       writeln("}");
       out();
    }
 
-    private void writeMethodSignature(Entrypoint _entryPoint, MethodModel mm) {
-        String returnType = mm.getReturnType();
-        // Arrays always map to __global arrays
-        if (returnType.startsWith("[")) {
-            write("__global ");
-        }
-        write(convertType(returnType, true));
+   private void writeMethodSignatureAndBody(VirtualMethodEntry virtualMethodEntry, MethodModel mm) throws CodeGenException {
+      writeMethodSignature(virtualMethodEntry, mm);
+      writeMethodBody(virtualMethodEntry, mm);
+      newLine();
+   }
 
-        write(mm.getName() + "(");
+   private void writeSignature(VirtualMethodEntry virtualMethodEntry, MethodModel mm) {
+      writeMethodSignature(virtualMethodEntry, mm);
+      write(";");
+      newLine();
+   }
 
-        if (!mm.getMethod().isStatic()) {
-            if ((mm.getMethod().getClassModel() == _entryPoint.getClassModel())
-                    || mm.getMethod().getClassModel().isSuperClass(_entryPoint.getClassModel().getClassWeAreModelling())
-                     || entryPoint.isVirtualMethod(mm.getName())) {
-                write("This *this");
-            } else {
-                // Call to an object member or superclass of member
-                for (ClassModel c : _entryPoint.getObjectArrayFieldsClasses().values()) {
-                    if (mm.getMethod().getClassModel() == c) {
-                        write("__global " + mm.getMethod().getClassModel().getClassWeAreModelling().getName().replace(".", "_")
-                                + " *this");
-                        break;
-                    } else if (mm.getMethod().getClassModel().isSuperClass(c.getClassWeAreModelling())) {
-                        write("__global " + c.getClassWeAreModelling().getName().replace(".", "_") + " *this");
-                        break;
-                    }
-                }
+   private void writeClassModelFields(List<String> thisStruct, List<String> argLines, List<String> assigns, VirtualMethodEntry entry) {
+      for (final ClassModelField field : entry.getReferencedClassModelFields()) {
+         // Field field = _entryPoint.getClassModel().getField(f.getName());
+         final StringBuilder thisStructLine = new StringBuilder();
+         final StringBuilder argLine = new StringBuilder();
+         final StringBuilder assignLine = new StringBuilder();
+
+         String signature = field.getDescriptor();
+
+         boolean isPointer = false;
+
+         int numDimensions = 0;
+
+         // check the suffix
+         String fieldName = entry.getCallPath() + field.getName();
+
+         String type = fieldName.endsWith(com.amd.aparapi.annotation.Local.LOCAL_SUFFIX) ? __local
+               : (fieldName.endsWith(com.amd.aparapi.annotation.Constant.CONSTANT_SUFFIX) ? __constant : __global);
+         final RuntimeAnnotationsEntry visibleAnnotations = field.getAttributePool().getRuntimeVisibleAnnotationsEntry();
+
+         if (visibleAnnotations != null) {
+            for (final AnnotationInfo ai : visibleAnnotations) {
+               final String typeDescriptor = ai.getTypeDescriptor();
+               if (typeDescriptor.equals(LOCAL_ANNOTATION_NAME)) {
+                  type = __local;
+               } else if (typeDescriptor.equals(CONSTANT_ANNOTATION_NAME)) {
+                  type = __constant;
+               }
             }
-        }
+         }
 
-        boolean alreadyHasFirstArg = !mm.getMethod().isStatic();
-
-        LocalVariableTableEntry<LocalVariableInfo> lvte = mm.getLocalVariableTableEntry();
-        for (LocalVariableInfo lvi : lvte) {
-            if ((lvi.getStart() == 0) && ((lvi.getVariableIndex() != 0) || mm.getMethod().isStatic())) { // full scope but skip this
-                String descriptor = lvi.getVariableDescriptor();
-                if (alreadyHasFirstArg) {
-                    write(", ");
-                }
-
-                // Arrays always map to __global arrays
-                if (descriptor.startsWith("[")) {
-                    write(" __global ");
-                }
-
-                write(convertType(descriptor, true));
-                write(lvi.getVariableName());
-                alreadyHasFirstArg = true;
+         //if we have a an array we want to mark the object as a pointer
+         //if we have a multiple dimensional array we want to remember the number of dimensions
+         while (signature.startsWith("[")) {
+            if(isPointer == false) {
+               argLine.append(type + " ");
+               thisStructLine.append(type + " ");
             }
-        }
-        write(")");
-    }
+            isPointer = true;
+            numDimensions++;
+            signature = signature.substring(1);
+         }
+
+         // If it is a converted array of objects, emit the struct param
+         String className = null;
+         if (signature.startsWith("L")) {
+            // Turn Lcom/amd/javalabs/opencl/demo/DummyOOA; into com_amd_javalabs_opencl_demo_DummyOOA for example
+            className = (signature.substring(1, signature.length() - 1)).replace("/", "_");
+            // if (logger.isLoggable(Level.FINE)) {
+            // logger.fine("Examining object parameter: " + signature + " new: " + className);
+            // }
+
+            argLine.append(className);
+            thisStructLine.append(className);
+         } else {
+            argLine.append(convertType(ClassModel.typeName(signature.charAt(0)), false));
+            thisStructLine.append(convertType(ClassModel.typeName(signature.charAt(0)), false));
+         }
+
+         argLine.append(" ");
+         thisStructLine.append(" ");
+
+         if (isPointer) {
+            argLine.append("*");
+            thisStructLine.append("*");
+         }
+         assignLine.append("this->");
+         assignLine.append(fieldName);
+         assignLine.append(" = ");
+         assignLine.append(fieldName);
+         argLine.append(fieldName);
+         thisStructLine.append(fieldName);
+         assigns.add(assignLine.toString());
+         argLines.add(argLine.toString());
+         thisStruct.add(thisStructLine.toString());
+
+         // Add int field into "this" struct for supporting java arraylength op
+         // named like foo__javaArrayLength
+         if (isPointer && entry.getArrayFieldArrayLengthUsed().contains(fieldName) ||
+               isPointer && numDimensions > 1) {
+
+            for(int i = 0; i < numDimensions; i++) {
+               final StringBuilder lenStructLine = new StringBuilder();
+               final StringBuilder lenArgLine = new StringBuilder();
+               final StringBuilder lenAssignLine = new StringBuilder();
+               final StringBuilder dimStructLine = new StringBuilder();
+               final StringBuilder dimArgLine = new StringBuilder();
+               final StringBuilder dimAssignLine = new StringBuilder();
+
+               String lenName = fieldName + BlockWriter.arrayLengthMangleSuffix +
+                     Integer.toString(i);
+
+               lenStructLine.append("int " + lenName);
+
+               lenAssignLine.append("this->");
+               lenAssignLine.append(lenName);
+               lenAssignLine.append(" = ");
+               lenAssignLine.append(lenName);
+
+               lenArgLine.append("int " + lenName);
+
+               assigns.add(lenAssignLine.toString());
+               argLines.add(lenArgLine.toString());
+               thisStruct.add(lenStructLine.toString());
+
+               String dimName = fieldName + BlockWriter.arrayDimMangleSuffix +
+                     Integer.toString(i);
+
+               dimStructLine.append("int " + dimName);
+
+               dimAssignLine.append("this->");
+               dimAssignLine.append(dimName);
+               dimAssignLine.append(" = ");
+               dimAssignLine.append(dimName);
+
+               dimArgLine.append("int " + dimName);
+
+               assigns.add(dimAssignLine.toString());
+               argLines.add(dimArgLine.toString());
+               thisStruct.add(dimStructLine.toString());
+            }
+         }
+      }
+
+      for (VirtualMethodEntry virtualMethodEntry : entry.getVirtualMethodEntryReferenceList()) {
+         writeClassModelFields(thisStruct, argLines, assigns, virtualMethodEntry);
+      }
+   }
+
+   private void writeMethodSignature(VirtualMethodEntry entry, MethodModel mm) {
+      String returnType = mm.getReturnType();
+      // Arrays always map to __global arrays
+      if (returnType.startsWith("[")) {
+         write("__global ");
+      }
+      write(convertType(returnType, true));
+
+      String name = mm.getName();
+      write(entry.getCallPath() + name + "(");
+
+      if (!mm.getMethod().isStatic()) {
+         if ((mm.getMethod().getClassModel() == entry.getClassModel())
+               || mm.getMethod().getClassModel().isSuperClass(entry.getClassModel().getClassWeAreModelling())
+               || entry.isVirtualMethod(name)) {
+            write("This *this");
+         } else {
+            // Call to an object member or superclass of member
+            for (ClassModel c : entry.getObjectArrayFieldsClasses().values()) {
+               if (mm.getMethod().getClassModel() == c) {
+                  write("__global " + mm.getMethod().getClassModel().getClassWeAreModelling().getName().replace(".", "_")
+                        + " *this");
+                  break;
+               } else if (mm.getMethod().getClassModel().isSuperClass(c.getClassWeAreModelling())) {
+                  write("__global " + c.getClassWeAreModelling().getName().replace(".", "_") + " *this");
+                  break;
+               }
+            }
+         }
+      }
+
+      boolean alreadyHasFirstArg = !mm.getMethod().isStatic();
+
+      LocalVariableTableEntry<LocalVariableInfo> lvte = mm.getLocalVariableTableEntry();
+      for (LocalVariableInfo lvi : lvte) {
+         if ((lvi.getStart() == 0) && ((lvi.getVariableIndex() != 0) || mm.getMethod().isStatic())) { // full scope but skip this
+            String descriptor = lvi.getVariableDescriptor();
+            if (alreadyHasFirstArg) {
+               write(", ");
+            }
+
+            // Arrays always map to __global arrays
+            if (descriptor.startsWith("[")) {
+               write(" __global ");
+            }
+
+            write(convertType(descriptor, true));
+            write(lvi.getVariableName());
+            alreadyHasFirstArg = true;
+         }
+      }
+      write(")");
+   }
 
    @Override public void writeThisRef() {
       write("this->");
    }
 
-   @Override public void writeInstruction(Instruction _instruction) throws CodeGenException {
+   @Override public void writeInstruction(VirtualMethodEntry virtualMethodEntry, Instruction _instruction) throws CodeGenException {
       if ((_instruction instanceof I_IUSHR) || (_instruction instanceof I_LUSHR)) {
          final BinaryOperator binaryInstruction = (BinaryOperator) _instruction;
          final Instruction parent = binaryInstruction.getParentExpr();
@@ -683,16 +713,16 @@ public abstract class KernelWriter extends BlockWriter{
          } else {
             write("((unsigned long)");
          }
-         writeInstruction(binaryInstruction.getLhs());
+         writeInstruction(virtualMethodEntry, binaryInstruction.getLhs());
          write(")");
          write(" >> ");
-         writeInstruction(binaryInstruction.getRhs());
+         writeInstruction(virtualMethodEntry, binaryInstruction.getRhs());
 
          if (needsParenthesis) {
             write(")");
          }
       } else {
-         super.writeInstruction(_instruction);
+         super.writeInstruction(virtualMethodEntry, _instruction);
       }
    }
 

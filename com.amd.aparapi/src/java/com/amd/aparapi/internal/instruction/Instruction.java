@@ -43,7 +43,7 @@ import com.amd.aparapi.internal.instruction.InstructionSet.Branch;
 import com.amd.aparapi.internal.instruction.InstructionSet.ByteCode;
 import com.amd.aparapi.internal.instruction.InstructionSet.CompositeInstruction;
 import com.amd.aparapi.internal.instruction.InstructionSet.ConditionalBranch;
-import com.amd.aparapi.internal.model.MethodModel;
+import com.amd.aparapi.internal.model.MethodModelRaw;
 import com.amd.aparapi.internal.reader.ByteReader;
 
 /**
@@ -59,7 +59,7 @@ import com.amd.aparapi.internal.reader.ByteReader;
  */
 public abstract class Instruction{
 
-   protected MethodModel method;
+   protected MethodModelRaw method;
 
    private final ByteCode byteCode;
 
@@ -157,13 +157,13 @@ public abstract class Instruction{
       return (getFirstChild() == null ? pc : getFirstChild().getStartPC());
    }
 
-   protected Instruction(MethodModel _method, ByteCode _byteCode, int _pc) {
+   protected Instruction(MethodModelRaw _method, ByteCode _byteCode, int _pc) {
       method = _method;
       pc = _pc;
       byteCode = _byteCode;
    }
 
-   protected Instruction(MethodModel _method, ByteCode _byteCode, ByteReader _byteReader, boolean _wide) {
+   protected Instruction(MethodModelRaw _method, ByteCode _byteCode, ByteReader _byteReader, boolean _wide) {
       this(_method, _byteCode, _wide ? _byteReader.getOffset() - 2 : _byteReader.getOffset() - 1);
    }
 
@@ -220,7 +220,7 @@ public abstract class Instruction{
       return (getFirstChild() == null ? this : getFirstChild().getStartInstruction());
    }
 
-   public MethodModel getMethod() {
+   public MethodModelRaw getMethod() {
       return (method);
    }
 

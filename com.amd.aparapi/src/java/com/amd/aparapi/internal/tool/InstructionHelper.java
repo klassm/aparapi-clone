@@ -20,10 +20,7 @@ import com.amd.aparapi.internal.instruction.InstructionSet.I_IINC;
 import com.amd.aparapi.internal.instruction.InstructionSet.LocalVariableTableIndexAccessor;
 import com.amd.aparapi.internal.instruction.InstructionSet.MethodCall;
 import com.amd.aparapi.internal.instruction.InstructionSet.OperatorInstruction;
-import com.amd.aparapi.internal.model.ClassModel;
-import com.amd.aparapi.internal.model.Entrypoint;
-import com.amd.aparapi.internal.model.MethodModel;
-import com.amd.aparapi.internal.model.ClassModel.LocalVariableTableEntry;
+import com.amd.aparapi.internal.model.*;
 import com.amd.aparapi.internal.model.ClassModel.LocalVariableInfo;
 import com.amd.aparapi.internal.writer.BlockWriter;
 
@@ -143,9 +140,9 @@ public class InstructionHelper{
          sb = new StringBuilder();
       }
 
-      public static String write(MethodModel _methodModel) throws CodeGenException {
+      public static String write(VirtualMethodEntry virtualMethodEntry, MethodModelRaw _methodModel) throws CodeGenException {
          final StringWriter sw = new StringWriter();
-         sw.writeMethodBody(_methodModel);
+         sw.writeMethodBody(virtualMethodEntry, _methodModel);
          return (sw.toString());
       }
 
@@ -153,8 +150,8 @@ public class InstructionHelper{
          // TODO Auto-generated method stub
       }
 
-      @Override public void writeMethodBody(MethodModel _methodModel) throws CodeGenException {
-         super.writeMethodBody(_methodModel);
+      @Override public void writeMethodBody(VirtualMethodEntry virtualMethodEntry, MethodModel _methodModel) throws CodeGenException {
+         super.writeMethodBody(virtualMethodEntry, _methodModel);
       }
    }
 
@@ -305,7 +302,7 @@ public class InstructionHelper{
       }
    }
 
-   public static String getLabel(Instruction instruction, boolean showNumber, boolean showExpressions, boolean verboseBytecodeLabels) {
+   public static String getLabel(VirtualMethodEntry virtualMethodEntry, Instruction instruction, boolean showNumber, boolean showExpressions, boolean verboseBytecodeLabels) {
 
       final ByteCode byteCode = instruction.getByteCode();
       final StringBuilder label = new StringBuilder();
@@ -384,7 +381,7 @@ public class InstructionHelper{
       } else {
          final StringWriter writer = new StringWriter(label);
          try {
-            writer.writeInstruction(instruction);
+            writer.writeInstruction(virtualMethodEntry, instruction);
          } catch (final CodeGenException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -395,9 +392,9 @@ public class InstructionHelper{
       return (label.toString());
    }
 
-   private static void appendFoldedInstruction(Table _sl, String _prefix, Instruction _instruction) {
+   private static void appendFoldedInstruction(VirtualMethodEntry virtualMethodEntry, Table _sl, String _prefix, Instruction _instruction) {
       _sl.data(_instruction.getThisPC());
-      _sl.data(_prefix + InstructionHelper.getLabel(_instruction, false, false, true));
+      _sl.data(_prefix + InstructionHelper.getLabel(virtualMethodEntry, _instruction, false, false, true));
       final int startPc = _instruction.getStartPC();
       final int thisPc = _instruction.getThisPC();
 
@@ -408,28 +405,28 @@ public class InstructionHelper{
 
       _sl.data(sb.toString());
       for (Instruction child = _instruction.getFirstChild(); child != null; child = child.getNextExpr()) {
-         appendFoldedInstruction(_sl, _prefix + "   ", child);
+         appendFoldedInstruction(virtualMethodEntry, _sl, _prefix + "   ", child);
       }
    }
 
-   static void writeExpression(String _prefix, Instruction _instruction) {
-      System.out.println(_prefix + InstructionHelper.getLabel(_instruction, true, true, false));
+   static void writeExpression(VirtualMethodEntry virtualMethodEntry, String _prefix, Instruction _instruction) {
+      System.out.println(_prefix + InstructionHelper.getLabel(virtualMethodEntry, _instruction, true, true, false));
    }
 
-   static String getFoldedView(MethodModel _methodModel) {
+   static String getFoldedView(VirtualMethodEntry virtualMethodEntry, MethodModelRaw _methodModel) {
       final Table sl = new Table("%4d", " %s", " %s");
       sl.header("  pc", " expression", " branches");
       for (Instruction root = _methodModel.getExprHead(); root != null; root = root.getNextExpr()) {
-         appendFoldedInstruction(sl, "", root);
+         appendFoldedInstruction(virtualMethodEntry, sl, "", root);
       }
       return (sl.toString());
    }
 
-   static String createView(MethodModel _methodModel, String _msg, Instruction _head) {
+   static String createView(VirtualMethodEntry virtualMethodEntry, MethodModelRaw _methodModel, String _msg, Instruction _head) {
       final Table table = new Table("[%2d-%2d] ", "%-60s", "%s");
       for (Instruction root = _head; root != null; root = root.getNextExpr()) {
 
-         final String label = InstructionHelper.getLabel(root, false, true, false);
+         final String label = InstructionHelper.getLabel(virtualMethodEntry, root, false, true, false);
          final StringBuilder sb = new StringBuilder();
          for (final BranchVector branchInfo : getBranches(_methodModel)) {
             sb.append(branchInfo.render(root.getThisPC(), root.getStartPC()));
@@ -442,12 +439,12 @@ public class InstructionHelper{
       return (_msg + "{\n" + table.toString() + "}\n");
    }
 
-   static String createView(MethodModel _methodModel, String _msg, Instruction _head, Instruction _tail,
+   static String createView(VirtualMethodEntry virtualMethodEntry, MethodModelRaw _methodModel, String _msg, Instruction _head, Instruction _tail,
          int _pcForwardBranchTargetCounts[]) {
       final Table table = new Table("[%2d-%2d] ", "%-40s", "%s", "%3d");
 
       for (Instruction root = _head; root != null; root = root.getNextExpr()) {
-         final String label = InstructionHelper.getLabel(root, false, false, false);
+         final String label = InstructionHelper.getLabel(virtualMethodEntry, root, false, false, false);
          final StringBuilder sb = new StringBuilder();
          for (final BranchVector branchInfo : getBranches(_methodModel)) {
             sb.append(branchInfo.render(root.getThisPC(), root.getStartPC()));
@@ -457,7 +454,7 @@ public class InstructionHelper{
          table.data(sb);
          table.data(_pcForwardBranchTargetCounts[root.getStartPC()]);
       }
-      final String label = InstructionHelper.getLabel(_tail, false, false, false);
+      final String label = InstructionHelper.getLabel(virtualMethodEntry, _tail, false, false, false);
       final StringBuilder sb = new StringBuilder();
       for (final BranchVector branchInfo : getBranches(_methodModel)) {
          sb.append(branchInfo.render(_tail.getThisPC(), _tail.getStartPC()));
@@ -469,7 +466,7 @@ public class InstructionHelper{
       return (_msg + "{\n" + table.toString() + "}\n");
    }
 
-   static String getJavapView(MethodModel _methodModel) {
+   static String getJavapView(VirtualMethodEntry virtualMethodEntry, MethodModelRaw _methodModel) {
       final Table table = new Table("%4d", "%4d", " %s", " %s");
       table.header("stack ", "pc ", " mnemonic", " branches");
       int stack = 0;
@@ -478,7 +475,7 @@ public class InstructionHelper{
          final int pc = i.getThisPC();
          table.data(stack);
          table.data(pc);
-         table.data(InstructionHelper.getLabel(i, false, false, false));
+         table.data(InstructionHelper.getLabel(virtualMethodEntry, i, false, false, false));
          if (true) {
             final StringBuilder sb = new StringBuilder();
             for (final BranchVector branchInfo : getBranches(_methodModel)) {
@@ -499,7 +496,7 @@ public class InstructionHelper{
 
    };
 
-   static List<BranchVector> getBranches(MethodModel _methodModel) {
+   static List<BranchVector> getBranches(MethodModelRaw _methodModel) {
       final List<BranchVector> branchVectors = new ArrayList<BranchVector>();
 
       for (Instruction instruction = _methodModel.getPCHead(); instruction != null; instruction = instruction.getNextPC()) {
@@ -515,11 +512,11 @@ public class InstructionHelper{
       return (branchVectors);
    }
 
-   void edump(StringBuilder _sb, Instruction i, boolean clone) {
-      final String label = InstructionHelper.getLabel(i, false, true, true);
+   void edump(VirtualMethodEntry virtualMethodEntry, StringBuilder _sb, Instruction i, boolean clone) {
+      final String label = InstructionHelper.getLabel(virtualMethodEntry, i, false, true, true);
 
       if (i instanceof CloneInstruction) {
-         edump(_sb, ((CloneInstruction) i).getReal(), true);
+         edump(virtualMethodEntry, _sb, ((CloneInstruction) i).getReal(), true);
       } else {
 
          if (i.producesStack()) {
@@ -576,16 +573,16 @@ public class InstructionHelper{
       }
    }
 
-   void dump(String _indent, Instruction i, boolean clone) {
-      final String label = InstructionHelper.getLabel(i, true, false, false);
+   void dump(VirtualMethodEntry virtualMethodEntry, String _indent, Instruction i, boolean clone) {
+      final String label = InstructionHelper.getLabel(virtualMethodEntry, i, true, false, false);
 
       if (i instanceof CloneInstruction) {
-         dump(_indent, ((CloneInstruction) i).getReal(), true);
+         dump(virtualMethodEntry, _indent, ((CloneInstruction) i).getReal(), true);
       } else {
          System.out.println(_indent + (clone ? "*" : " ") + label);
       }
       for (Instruction ii = i.getFirstChild(); ii != null; ii = ii.getNextExpr()) {
-         dump(_indent + "  ", ii, false);
+         dump(virtualMethodEntry, _indent + "  ", ii, false);
 
       }
    }
