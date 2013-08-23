@@ -140,7 +140,7 @@ public class VirtualMethodEntry {
                if (logger.isLoggable(Level.FINE)) {
                   logger.fine("field type is " + type.getName());
                }
-               if (type.isPrimitive() || type.isArray()) {
+               if (type.isPrimitive() || type.isArray() || type.isAnnotationPresent(InlineClass.class)) {
                   return field;
                }
                throw new ClassParseException(ClassParseException.TYPE.OBJECTFIELDREFERENCE);

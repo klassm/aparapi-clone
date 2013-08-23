@@ -50,6 +50,7 @@ import com.amd.aparapi.internal.jni.KernelRunnerJNI;
 import com.amd.aparapi.internal.model.ClassModel;
 import com.amd.aparapi.internal.model.Entrypoint;
 import com.amd.aparapi.internal.model.VirtualMethodEntry;
+import com.amd.aparapi.internal.util.ReflectionUtil;
 import com.amd.aparapi.internal.util.UnsafeWrapper;
 import com.amd.aparapi.internal.writer.KernelWriter;
 import com.amd.aparapi.opencl.OpenCL;
@@ -762,7 +763,8 @@ public class KernelRunner extends KernelRunnerJNI {
                   String[] parts = inlineReferencePath.split("\\.");
                   for (String part : parts) {
                      Class<?> cls = baseRef.getClass();
-                     Field partField = cls.getDeclaredField(part);
+                     Field partField = ReflectionUtil.getFieldInHierarchy(part, cls);
+                     if (partField == null) throw new NoSuchFieldException();
                      partField.setAccessible(true);
                      baseRef = partField.get(baseRef);
                   }
