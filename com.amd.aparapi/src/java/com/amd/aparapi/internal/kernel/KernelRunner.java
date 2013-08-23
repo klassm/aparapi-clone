@@ -753,7 +753,7 @@ public class KernelRunner extends KernelRunnerJNI {
       for (KernelArg arg : kernelMapping.kernelArgs) {
          try {
             if ((arg.getType() & ARG_ARRAY) != 0) {
-               String inlineReferencePath = arg.getInlineReferencePath();
+               String inlineReferencePath = arg.getInlineReferencePathVariableName();
 
                // Find out the original base reference by walking the inline path and updating the reference using
                // reflection.
@@ -806,7 +806,7 @@ public class KernelRunner extends KernelRunnerJNI {
          } catch (final IllegalAccessException e) {
             logger.log(Level.SEVERE, "IllegalAccessException during update kernel refs", e);
          } catch (NoSuchFieldException e) {
-            logger.log(Level.SEVERE, "cannot find field for inlinePath: " + arg.getInlineReferencePath(), e);
+            logger.log(Level.SEVERE, "cannot find field for inlinePath: " + arg.getInlineReferencePathVariableName(), e);
          }
       }
       return needsSync;
@@ -1152,7 +1152,9 @@ public class KernelRunner extends KernelRunnerJNI {
       KernelArg currentArgument = new KernelArg();
       currentArgument.setName(field.getName());
       currentArgument.setField(field);
-      currentArgument.setInlineReferencePath(virtualMethodEntry.getInlineReferencePathFor(field));
+      currentArgument.setInlineReferencePathVariableName(virtualMethodEntry.getInlineReferencePathVariableNameFor(field));
+      currentArgument.setInlineReferencePathVariableType(virtualMethodEntry.getInlineReferencePathVariableTypeFor(field));
+
       if ((field.getModifiers() & Modifier.STATIC) == Modifier.STATIC) {
          currentArgument.setType(currentArgument.getType() | ARG_STATIC);
       }

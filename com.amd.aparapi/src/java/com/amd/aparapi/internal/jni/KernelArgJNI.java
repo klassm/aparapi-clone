@@ -92,4 +92,14 @@ public abstract class KernelArgJNI{
     * Field in Kernel class corresponding to this arg
     */
    @UsedByJNICode protected Field field;
+
+   /**
+    * Path (variable names) to the original kernel object (used for finding the original reference upon updates)
+    */
+   @UsedByJNICode protected String inlineReferencePathVariableName;
+
+   /**
+    * Path (variable types) to the original kernel object (used for finding the original reference upon updates)
+    */
+   @UsedByJNICode protected String inlineReferencePathVariableType;
 }

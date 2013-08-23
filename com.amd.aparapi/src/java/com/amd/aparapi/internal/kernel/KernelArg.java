@@ -4,7 +4,6 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import com.amd.aparapi.Kernel;
 import com.amd.aparapi.internal.jni.KernelArgJNI;
 import com.amd.aparapi.internal.model.ClassModel;
 
@@ -42,11 +41,6 @@ public class KernelArg extends KernelArgJNI{
     * Size of this primitive
     */
    private int primitiveSize;
-
-   /**
-    * Path to the original kernel object (used for finding the original reference upon updates)
-    */
-   private String inlineReferencePath;
 
    /**
     * Default constructor
@@ -268,15 +262,29 @@ public class KernelArg extends KernelArgJNI{
    /**
     * @return inline reference path
     */
-   public String getInlineReferencePath() {
-      return inlineReferencePath;
+   public String getInlineReferencePathVariableName() {
+      return inlineReferencePathVariableName;
    }
 
    /**
-    * @param inlineReferencePath inline reference path used for finding the original reference upon updates
+    * @param inlineReferencePathVariableName inline reference path used for finding the original reference upon updates
     */
-   public void setInlineReferencePath(String inlineReferencePath) {
-      this.inlineReferencePath = inlineReferencePath;
+   public void setInlineReferencePathVariableName(String inlineReferencePathVariableName) {
+      this.inlineReferencePathVariableName = inlineReferencePathVariableName;
+   }
+
+   /**
+    * @return inline reference path
+    */
+   public String getInlineReferencePathVariableType() {
+      return inlineReferencePathVariableType;
+   }
+
+   /**
+    * @param inlineReferencePathVariableType inline reference path used for finding the original reference upon updates
+    */
+   public void setInlineReferencePathVariableType(String inlineReferencePathVariableType) {
+      this.inlineReferencePathVariableType = inlineReferencePathVariableType;
    }
 
    @Override

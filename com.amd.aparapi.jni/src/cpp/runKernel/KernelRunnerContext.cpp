@@ -17,6 +17,7 @@ KernelRunnerContext::KernelRunnerContext(cl_device_id _deviceId, cl_device_type 
 
 
 KernelRunnerContext::~KernelRunnerContext(void) {
+   delete bufferManager;
 }
 
 void KernelRunnerContext::dispose(JNIEnv* jenv) {

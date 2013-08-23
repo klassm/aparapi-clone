@@ -25,18 +25,23 @@ class KernelArg{
       static jfieldID typeFieldID; 
       static jfieldID sizeInBytesFieldID;
       static jfieldID numElementsFieldID;
+      static jfieldID inlinePathVariableNamesFieldID;
+      static jfieldID inlinePathVariableTypesFieldID;
+
+      std::vector<char*> inlinePathVariableNamesParts;
+      std::vector<char*> inlinePathVariableTypesParts;
 
       const char* getTypeName();
 
       //all of these use KernelContext so they can't be inlined
 
       //get the value of a primitive arguement
-      void getPrimitiveValue(JNIEnv *jenv, jfloat *value);
-      void getPrimitiveValue(JNIEnv *jenv, jint *value);
-      void getPrimitiveValue(JNIEnv *jenv, jboolean *value);
-      void getPrimitiveValue(JNIEnv *jenv, jbyte *value);
-      void getPrimitiveValue(JNIEnv *jenv, jlong *value);
-      void getPrimitiveValue(JNIEnv *jenv, jdouble *value);
+      void getPrimitiveValue(JNIEnv *jenv, jfloat *value, jobject baseRef, jclass baseClass);
+      void getPrimitiveValue(JNIEnv *jenv, jint *value, jobject baseRef, jclass baseClass);
+      void getPrimitiveValue(JNIEnv *jenv, jboolean *value, jobject baseRef, jclass baseClass);
+      void getPrimitiveValue(JNIEnv *jenv, jbyte *value, jobject baseRef, jclass baseClass);
+      void getPrimitiveValue(JNIEnv *jenv, jlong *value, jobject baseRef, jclass baseClass);
+      void getPrimitiveValue(JNIEnv *jenv, jdouble *value, jobject baseRef, jclass baseClass);
 
       //get the value of a static primitive arguement
       void getStaticPrimitiveValue(JNIEnv *jenv, jfloat *value);
@@ -47,12 +52,12 @@ class KernelArg{
       void getStaticPrimitiveValue(JNIEnv *jenv, jdouble *value);
 
       template<typename T> 
-      void getPrimitive(JNIEnv *jenv, int argIdx, int argPos, bool verbose, T* value) {
+      void getPrimitive(JNIEnv *jenv, int argIdx, int argPos, bool verbose, T* value, jobject baseRef, jclass baseClass) {
          if(isStatic()) {
             getStaticPrimitiveValue(jenv, value);
          }
          else {
-            getPrimitiveValue(jenv, value);
+            getPrimitiveValue(jenv, value, baseRef, baseClass);
          }
          if (verbose) {
              std::cerr << "clSetKernelArg " << getTypeName() << " '" << name
@@ -60,6 +65,8 @@ class KernelArg{
                        << " value=" << *value << std::endl;
          }
       }
+
+      void splitStringBy(char *toSplit, char *delimiter, std::vector<char*> *resultVector);
 
 
    public:

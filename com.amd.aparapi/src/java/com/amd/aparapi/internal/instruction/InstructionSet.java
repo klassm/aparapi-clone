@@ -2759,12 +2759,40 @@ public class InstructionSet{
          return (getConstantPoolMethodEntry().getStackProduceCount());
       }
 
+      /**
+       * Get the field name the virtual method call is invoked on.
+       * @return field name
+       */
       public String getVirtualMethodInvokeFieldName() {
+         ConstantPool.NameAndTypeEntry nameAndTypeEntry = getVirtualMethodInvokeFieldNameAndTypeEntry();
+         if (nameAndTypeEntry != null) {
+            return nameAndTypeEntry.getNameUTF8Entry().getUTF8();
+         }
+         return null;
+      }
+
+      /**
+       * Get the field descriptor the virtual method call is invoked on.
+       * @return field descriptor
+       */
+      public String getVirtualMethodInvokeFieldDescriptor() {
+         ConstantPool.NameAndTypeEntry nameAndTypeEntry = getVirtualMethodInvokeFieldNameAndTypeEntry();
+         if (nameAndTypeEntry != null) {
+            return nameAndTypeEntry.getDescriptorUTF8Entry().getUTF8();
+         }
+         return null;
+      }
+
+      /**
+       * Get the {@link com.amd.aparapi.internal.model.ClassModel.ConstantPool.NameAndTypeEntry} instance
+       * containing the name and the descriptor the virtual method call is invoked on.
+       * @return name and type entry
+       */
+      private ConstantPool.NameAndTypeEntry getVirtualMethodInvokeFieldNameAndTypeEntry() {
          Instruction firstChild = getFirstChild();
          if (firstChild instanceof InstructionSet.AccessInstanceField) {
-            String fieldName = ((InstructionSet.AccessInstanceField) firstChild).getConstantPoolFieldEntry()
-                  .getNameAndTypeEntry().getNameUTF8Entry().getUTF8();
-            return fieldName;
+            AccessInstanceField accessField = (AccessInstanceField) firstChild;
+            return accessField.getConstantPoolFieldEntry().getNameAndTypeEntry();
          }
          return null;
       }

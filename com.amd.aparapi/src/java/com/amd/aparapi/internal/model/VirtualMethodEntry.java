@@ -39,7 +39,7 @@ public class VirtualMethodEntry {
     */
    protected final Set<String> arrayFieldArrayLengthUsed = new LinkedHashSet<String>();
 
-   protected final List<MethodModelRaw> calledMethods = new ArrayList<MethodModelRaw>();
+   protected final List<MethodModel> calledMethods = new ArrayList<MethodModel>();
 
    /**
     * Supporting classes of object array members like supers
@@ -55,11 +55,6 @@ public class VirtualMethodEntry {
     */
    protected List<VirtualMethodEntry> virtualMethodEntryReferenceList = new ArrayList<VirtualMethodEntry>();
 
-   /**
-    * A set of method names referenced in other objects for inlining.
-    */
-   protected Set<String> virtualMethodNames = new HashSet<String>();
-
    protected Set<VirtualMethod> virtualMethods = new HashSet<VirtualMethod>();
 
    /**
@@ -68,7 +63,9 @@ public class VirtualMethodEntry {
    protected Set<String> virtualFieldNames = new HashSet<String>();
 
    protected String callPath = "";
-   protected Map<Field, String> inlineReferencePathMapping = new HashMap<Field, String>();
+
+   protected Map<Field, String> inlineReferencePathVariableNameMapping = new HashMap<Field, String>();
+   protected Map<Field, String> inlineReferencePathVariableTypeMapping = new HashMap<Field, String>();
 
    /**
     *  True is an indication to use the fp64 pragma
@@ -89,9 +86,6 @@ public class VirtualMethodEntry {
    public VirtualMethodEntry(MethodModelRaw _methodModel, ClassModel _classModel) throws AparapiException {
       methodModel = _methodModel;
       classModel = _classModel;
-
-      init();
-      updateReferencedFieldsForVirtualMethodCalls();
    }
 
    public static Field getFieldFromClassHierarchy(Class<?> _clazz, String _name) throws AparapiException {
@@ -278,7 +272,7 @@ public class VirtualMethodEntry {
 
       // Quickly bail if it is a ref
       if (field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8().startsWith("L")
-            || field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8().startsWith("[L")) {
+          || field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8().startsWith("[L")) {
          throw new ClassParseException(ClassParseException.TYPE.OBJECTARRAYFIELDREFERENCE);
       }
 
@@ -316,20 +310,20 @@ public class VirtualMethodEntry {
          final ArrayList<ClassModel.ConstantPool.FieldEntry> structMemberSet = superCandidate.getStructMembers();
          for (final ClassModel.ConstantPool.FieldEntry f : structMemberSet) {
             if (f.getNameAndTypeEntry().getNameUTF8Entry().getUTF8().equals(accessedFieldName)
-                  && f.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8()
-                  .equals(field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8())) {
+                && f.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8()
+                .equals(field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8())) {
 
                if (logger.isLoggable(Level.FINE)) {
                   logger.fine("Found match: " + accessedFieldName + " class: " + field.getClassEntry().getNameUTF8Entry().getUTF8()
-                        + " to class: " + f.getClassEntry().getNameUTF8Entry().getUTF8());
+                      + " to class: " + f.getClassEntry().getNameUTF8Entry().getUTF8());
                }
 
                if (!f.getClassEntry().getNameUTF8Entry().getUTF8().equals(field.getClassEntry().getNameUTF8Entry().getUTF8())) {
                   // Look up in class hierarchy to ensure it is the same field
                   final Field superField = getFieldFromClassHierarchy(superCandidate.getClassWeAreModelling(), f
-                        .getNameAndTypeEntry().getNameUTF8Entry().getUTF8());
+                      .getNameAndTypeEntry().getNameUTF8Entry().getUTF8());
                   final Field classField = getFieldFromClassHierarchy(memberClass, f.getNameAndTypeEntry().getNameUTF8Entry()
-                        .getUTF8());
+                      .getUTF8());
                   if (!superField.equals(classField)) {
                      throw new ClassParseException(ClassParseException.TYPE.OVERRIDENFIELD);
                   }
@@ -348,8 +342,8 @@ public class VirtualMethodEntry {
          final ArrayList<ClassModel.ConstantPool.FieldEntry> structMemberSet = memberClassModel.getStructMembers();
          for (final ClassModel.ConstantPool.FieldEntry f : structMemberSet) {
             if (f.getNameAndTypeEntry().getNameUTF8Entry().getUTF8().equals(accessedFieldName)
-                  && f.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8()
-                  .equals(field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8())) {
+                && f.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8()
+                .equals(field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8())) {
                found = true;
             }
          }
@@ -357,8 +351,8 @@ public class VirtualMethodEntry {
             structMemberSet.add(field);
             if (logger.isLoggable(Level.FINE)) {
                logger.fine("Adding assigned field " + field.getNameAndTypeEntry().getNameUTF8Entry().getUTF8() + " type: "
-                     + field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8() + " to "
-                     + memberClassModel.getClassWeAreModelling().getName());
+                   + field.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8() + " to "
+                   + memberClassModel.getClassWeAreModelling().getName());
             }
          }
       }
@@ -383,8 +377,11 @@ public class VirtualMethodEntry {
 
       boolean isVirtualMethodCall = methodCall instanceof InstructionSet.I_INVOKEVIRTUAL;
       String accessedFieldName = null;
+      String accessedFieldDescriptor = null;
       if (isVirtualMethodCall) {
-         accessedFieldName = ((InstructionSet.I_INVOKEVIRTUAL) methodCall).getVirtualMethodInvokeFieldName();
+         InstructionSet.I_INVOKEVIRTUAL invokeVirtual = (InstructionSet.I_INVOKEVIRTUAL) methodCall;
+         accessedFieldName = invokeVirtual.getVirtualMethodInvokeFieldName();
+         accessedFieldDescriptor = invokeVirtual.getVirtualMethodInvokeFieldDescriptor();
       }
 
       ClassModel.ClassModelMethod m = classModel.getMethod(methodEntry, (methodCall instanceof InstructionSet.I_INVOKESPECIAL) ? true : false);
@@ -398,7 +395,7 @@ public class VirtualMethodEntry {
       if (m == null && !isMapped) {
          for (ClassModel c : allFieldsClasses.values()) {
             if (c.getClassWeAreModelling().getName()
-                  .equals(methodEntry.getClassEntry().getNameUTF8Entry().getUTF8().replace('/', '.'))) {
+                .equals(methodEntry.getClassEntry().getNameUTF8Entry().getUTF8().replace('/', '.'))) {
                if (methodEntry.asJavaClass().isAnnotationPresent(InlineClass.class)) continue;
 
                m = c.getMethod(methodEntry, (methodCall instanceof InstructionSet.I_INVOKESPECIAL) ? true : false);
@@ -438,9 +435,12 @@ public class VirtualMethodEntry {
             otherVirtualMethodEntry.appendToCallPath(callPath);
             otherVirtualMethodEntry.appendToCallPath(accessedFieldName);
 
+            otherVirtualMethodEntry.init();
+
             for (Field referencedField : otherVirtualMethodEntry.referencedFields) {
                if (! otherVirtualMethodEntry.isFieldVirtual(referencedField.getName())) {
-                  otherVirtualMethodEntry.inlineReferencePathMapping.put(referencedField, accessedFieldName);
+                  otherVirtualMethodEntry.inlineReferencePathVariableNameMapping.put(referencedField, accessedFieldName);
+                  otherVirtualMethodEntry.inlineReferencePathVariableTypeMapping.put(referencedField, accessedFieldDescriptor);
                }
             }
 
@@ -469,7 +469,7 @@ public class VirtualMethodEntry {
       return (referencedFields);
    }
 
-   public List<MethodModelRaw> getCalledMethods() {
+   public List<MethodModel> getCalledMethods() {
       return calledMethods;
    }
 
@@ -509,7 +509,7 @@ public class VirtualMethodEntry {
 
       if (logger.isLoggable(Level.FINE) && (target == null)) {
          logger.fine("Did not find call target: " + _methodEntry + " in " + getClassModel().getClassWeAreModelling().getName()
-               + " isMapped=" + isMapped);
+             + " isMapped=" + isMapped);
       }
 
       if (target == null) {
@@ -519,7 +519,7 @@ public class VirtualMethodEntry {
             if (entryClassNameInDotForm.equals(memberObjClass.getClassWeAreModelling().getName())) {
                if (logger.isLoggable(Level.FINE)) {
                   logger.fine("Searching for call target: " + _methodEntry + " in "
-                        + memberObjClass.getClassWeAreModelling().getName());
+                      + memberObjClass.getClassWeAreModelling().getName());
                }
 
                target = memberObjClass.getMethod(_methodEntry, false);
@@ -531,7 +531,7 @@ public class VirtualMethodEntry {
       }
 
       if (target != null) {
-         for (final MethodModelRaw m : calledMethods) {
+         for (final MethodModel m : calledMethods) {
             if (m.getMethod() == target) {
                if (logger.isLoggable(Level.FINE)) {
                   logger.fine("selected from called methods = " + m.getName());
@@ -542,15 +542,15 @@ public class VirtualMethodEntry {
       }
 
       // Search for static calls to other classes
-      for (MethodModelRaw m : calledMethods) {
+      for (MethodModel m : calledMethods) {
          if (logger.isLoggable(Level.FINE)) {
             logger.fine("Searching for call target: " + _methodEntry + " in " + m.getName());
          }
          if (m.getMethod().getName().equals(_methodEntry.getNameAndTypeEntry().getNameUTF8Entry().getUTF8())
-               && m.getMethod().getDescriptor().equals(_methodEntry.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8())) {
+             && m.getMethod().getDescriptor().equals(_methodEntry.getNameAndTypeEntry().getDescriptorUTF8Entry().getUTF8())) {
             if (logger.isLoggable(Level.FINE)) {
                logger.fine("Found " + m.getMethod().getClassModel().getClassWeAreModelling().getName() + "."
-                     + m.getMethod().getName() + " " + m.getMethod().getDescriptor());
+                   + m.getMethod().getName() + " " + m.getMethod().getDescriptor());
             }
             return m;
          }
@@ -582,7 +582,7 @@ public class VirtualMethodEntry {
       return null;
    }
 
-   protected void init() throws AparapiException {
+   public void init() throws AparapiException {
       final Map<ClassModel.ClassModelMethod, MethodModelRaw> methodMap = new LinkedHashMap<ClassModel.ClassModelMethod, MethodModelRaw>();
 
       boolean discovered = true;
@@ -623,6 +623,8 @@ public class VirtualMethodEntry {
          referencedFieldNames.addAll(referencedFieldNamesTarget);
 
          buildDataForOOPTransform();
+
+         updateReferencedFieldsForVirtualMethodCalls();
       }
    }
 
@@ -641,7 +643,7 @@ public class VirtualMethodEntry {
          while (superModel != null) {
             if (logger.isLoggable(Level.FINEST)) {
                logger.finest("adding = " + superModel.getClassWeAreModelling().getName() + " fields into "
-                     + memberObjClass.getClassWeAreModelling().getName());
+                   + memberObjClass.getClassWeAreModelling().getName());
             }
             memberObjClass.getStructMembers().addAll(superModel.getStructMembers());
             superModel = superModel.getSuperClazz();
@@ -686,7 +688,7 @@ public class VirtualMethodEntry {
                // Record field offset for use while copying
                // Get field we will copy out of the kernel member object
                final Field rfield = getFieldFromClassHierarchy(c.getClassWeAreModelling(), f.getNameAndTypeEntry()
-                     .getNameUTF8Entry().getUTF8());
+                   .getNameUTF8Entry().getUTF8());
 
                c.getStructMemberOffsets().add(UnsafeWrapper.objectFieldOffset(rfield));
 
@@ -701,7 +703,7 @@ public class VirtualMethodEntry {
                totalSize += fSize;
                if (logger.isLoggable(Level.FINEST)) {
                   logger.finest("Field = " + f.getNameAndTypeEntry().getNameUTF8Entry().getUTF8() + " size=" + fSize
-                        + " totalSize=" + totalSize);
+                      + " totalSize=" + totalSize);
                }
             }
 
@@ -721,7 +723,7 @@ public class VirtualMethodEntry {
    private void handleCalledMethods(Map<ClassModel.ClassModelMethod, MethodModelRaw> methodMap) throws AparapiException {
       calledMethods.addAll(methodMap.values());
       Collections.reverse(calledMethods);
-      final List<MethodModelRaw> methods = new ArrayList<MethodModelRaw>(calledMethods);
+      final List<MethodModel> methods = new ArrayList<MethodModel>(calledMethods);
 
       // add method to the calledMethods so we can include in this list
       methods.add(methodModel);
@@ -729,14 +731,14 @@ public class VirtualMethodEntry {
 
       final Set<String> fieldAccesses = new HashSet<String>();
 
-      for (final MethodModelRaw methodModel : methods) {
+      for (final MethodModel methodModel : methods) {
          handleCalledMethod(fieldAssignments, fieldAccesses, methodModel);
 
 
       }
    }
 
-   private void handleCalledMethod(Set<String> fieldAssignments, Set<String> fieldAccesses, MethodModelRaw methodModel) throws AparapiException {
+   private void handleCalledMethod(Set<String> fieldAssignments, Set<String> fieldAccesses, MethodModel methodModel) throws AparapiException {
       // Record which pragmas we need to enable
       if (methodModel.requiresDoublePragma()) {
          usesDoubles = true;
@@ -842,7 +844,7 @@ public class VirtualMethodEntry {
                final String className = (field.getClassEntry().getNameUTF8Entry().getUTF8()).replace("/", ".");
                // Look for object data member access
                if (!className.equals(getClassModel().getClassWeAreModelling().getName())
-                     && (getFieldFromClassHierarchy(getClassModel().getClassWeAreModelling(), accessedFieldName) == null)) {
+                   && (getFieldFromClassHierarchy(getClassModel().getClassWeAreModelling(), accessedFieldName) == null)) {
                   updateObjectMemberFieldAccesses(className, field);
                }
             }
@@ -857,7 +859,7 @@ public class VirtualMethodEntry {
             final String className = (field.getClassEntry().getNameUTF8Entry().getUTF8()).replace("/", ".");
             // Look for object data member access
             if (!className.equals(getClassModel().getClassWeAreModelling().getName())
-                  && (getFieldFromClassHierarchy(getClassModel().getClassWeAreModelling(), assignedFieldName) == null)) {
+                && (getFieldFromClassHierarchy(getClassModel().getClassWeAreModelling(), assignedFieldName) == null)) {
                updateObjectMemberFieldAccesses(className, field);
             } else {
 
@@ -919,7 +921,7 @@ public class VirtualMethodEntry {
                      target = methodMap.remove(m);
                      if (logger.isLoggable(Level.FINEST)) {
                         logger.fine("repositioning : " + m.getClassModel().getClassWeAreModelling().getName() + " " + m.getName()
-                              + " " + m.getDescriptor());
+                            + " " + m.getDescriptor());
                      }
                   } else {
                      target = new MethodModelRaw(m, this);
@@ -976,7 +978,7 @@ public class VirtualMethodEntry {
    private void updateReferencedFieldsForVirtualMethodCalls() {
       ArrayList<Field> referencedFieldsClone = new ArrayList<Field>(referencedFields);
       ArrayList<ClassModel.ClassModelField> classModelFieldsClone =
-            new ArrayList<ClassModel.ClassModelField>(referencedClassModelFields);
+          new ArrayList<ClassModel.ClassModelField>(referencedClassModelFields);
 
       for (Field field : referencedFieldsClone) {
          if (field.getType().isAnnotationPresent(InlineClass.class)) {
@@ -989,30 +991,18 @@ public class VirtualMethodEntry {
             }
          }
       }
+      ArrayList<MethodModel> calledMethodsNew = new ArrayList<MethodModel>();
+      for (MethodModel calledMethod : calledMethods) {
+         if (isVirtualMethod(calledMethod.getName())) continue;
 
-      for (MethodModelRaw calledMethod : new ArrayList<MethodModelRaw>(calledMethods)) {
-         if (isVirtualMethod(calledMethod.getName())) {
-            calledMethods.remove(calledMethod);
+         if (callPath.equals("")) {
+            calledMethodsNew.add(calledMethod);
+         } else {
+            calledMethodsNew.add(MethodModelNameWrapper.wrap(calledMethod, getCallPath()));
          }
       }
-
-      if (this instanceof Entrypoint) {
-         System.out.println("hallo");
-      }
-//
-//      for (VirtualMethodEntry virtualMethodEntry : virtualMethodEntryReferenceList) {
-//         addAllIfNotContainedIn(referencedFields, virtualMethodEntry.referencedFields);
-//         addAllIfNotContainedIn(referencedFieldNames, virtualMethodEntry.referencedFieldNames);
-//         addAllIfNotContainedIn(referencedClassModelFields, virtualMethodEntry.referencedClassModelFields);
-//      }
-   }
-
-   private <T> void addAllIfNotContainedIn(List<T> dest, List<T> source) {
-      for (T t : source) {
-         if (! dest.contains(t)) {
-            dest.add(t);
-         }
-      }
+      calledMethods.clear();
+      calledMethods.addAll(calledMethodsNew);
    }
 
    public boolean isFieldVirtual(String fieldName) {
@@ -1028,8 +1018,16 @@ public class VirtualMethodEntry {
       return false;
    }
 
-   public String getInlineReferencePathFor(Field field) {
-      return inlineReferencePathMapping.get(field);
+   public String getInlineReferencePathVariableNameFor(Field field) {
+      String value = inlineReferencePathVariableNameMapping.get(field);
+      if (value == null) return "";
+      return value;
+   }
+
+   public String getInlineReferencePathVariableTypeFor(Field field) {
+      String value = inlineReferencePathVariableTypeMapping.get(field);
+      if (value == null) return "";
+      return value;
    }
 
    public void appendToCallPath(String callPath) {

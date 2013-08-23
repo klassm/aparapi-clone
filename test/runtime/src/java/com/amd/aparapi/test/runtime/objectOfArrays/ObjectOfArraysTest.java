@@ -9,6 +9,7 @@ import org.junit.Test;
 import java.util.Arrays;
 
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 public class ObjectOfArraysTest {
@@ -65,6 +66,41 @@ public class ObjectOfArraysTest {
          int i2 = data2[i];
 
          assertThat(target.getData()[i], is(i1 + i2));
+      }
+
+      assertThat(kernelRunner.getExecutionMode(), is(EXECUTION_MODE.GPU));
+   }
+
+   @Test
+   public void testObjectOfArraysHolderWithInternalMethodCalls() {
+      int[] data1 = new int[] { 3, 5, 7, 9, 11, 12};
+
+      HolderWithInternalMethodCall holder = new HolderWithInternalMethodCall(data1);
+      holder.put(kernelRunner);
+
+      kernelRunner.execute(new HolderWithInternalMethodCallKernel(holder, data1.length), data1.length);
+
+      holder.get(kernelRunner);
+
+      assertThat(kernelRunner.getExecutionMode(), is(EXECUTION_MODE.GPU));
+   }
+
+   @Test
+   public void testLinearGrid() {
+      LinearGrid grid = new LinearGrid(10, 10, 10);
+      grid.put(kernelRunner);
+
+      LinearGridKernel kernel = new LinearGridKernel(grid);
+      kernelRunner.execute(kernel, grid.getSize());
+
+      grid.get(kernelRunner);
+
+      for (int x = 0; x < grid.getDimY(); x++) {
+         for (int y = 0; y < grid.getDimY(); y++) {
+            for (int z = 0; z < grid.getDimZ(); z++) {
+               assertEquals(grid.valueAt(x, y, z), 1, 0.0001);
+            }
+         }
       }
 
       assertThat(kernelRunner.getExecutionMode(), is(EXECUTION_MODE.GPU));

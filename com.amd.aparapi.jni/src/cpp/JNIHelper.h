@@ -248,6 +248,15 @@ class JNIHelper {
          return field;
       }
 
+      static char* getStringFieldContentAsCharArray(JNIEnv *jenv, jobject obj, jfieldID fieldId) {
+         jstring string  = (jstring)jenv->GetObjectField(obj, fieldId);
+         const char *stringChars = jenv->GetStringUTFChars(string, NULL);
+         char* result = strdup(stringChars);
+         jenv->ReleaseStringUTFChars(string, stringChars);
+
+         return result;
+      }
+
 };
 
 #endif // JNIHELPER_H

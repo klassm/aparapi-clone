@@ -229,9 +229,9 @@ public abstract class KernelWriter extends BlockWriter{
                write(m.getName());
             } else {
                // Must be a library call like rsqrt
-               assert isMapped : _methodEntry + " should be mapped method!";
-               write(methodName);
-               isIntrinsic = true;
+//               assert isMapped : _methodEntry + " should be mapped method!";
+//               write(methodName);
+//               isIntrinsic = true;
             }
          } else {
             write(intrinsicMapping);
@@ -430,7 +430,7 @@ public abstract class KernelWriter extends BlockWriter{
 
       List<VirtualMethodEntry> virtualMethodEntries = _entryPoint.listAllVirtualMethodEntries();
       for (VirtualMethodEntry virtualMethodEntry : virtualMethodEntries) {
-         for (final MethodModelRaw mm : virtualMethodEntry.getCalledMethods()) {
+         for (final MethodModel mm : virtualMethodEntry.getCalledMethods()) {
             writeSignature(virtualMethodEntry, mm);
          }
 
@@ -440,7 +440,7 @@ public abstract class KernelWriter extends BlockWriter{
       }
 
       for (VirtualMethodEntry virtualMethodEntry : virtualMethodEntries) {
-         for (final MethodModelRaw mm : _entryPoint.getCalledMethods()) {
+         for (final MethodModel mm : virtualMethodEntry.getCalledMethods()) {
             writeMethodSignatureAndBody(virtualMethodEntry, mm);
          }
 

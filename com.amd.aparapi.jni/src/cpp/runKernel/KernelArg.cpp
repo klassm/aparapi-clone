@@ -3,6 +3,7 @@
 #include "BufferManager.h"
 #include <string>
 #include <iostream>
+#include <vector>
 
 using std::string;
 using std::cerr;
@@ -14,6 +15,8 @@ jfieldID KernelArg::typeFieldID=0;
 jfieldID KernelArg::javaArrayFieldID=0; 
 jfieldID KernelArg::sizeInBytesFieldID=0;
 jfieldID KernelArg::numElementsFieldID=0; 
+jfieldID KernelArg::inlinePathVariableNamesFieldID=0; 
+jfieldID KernelArg::inlinePathVariableTypesFieldID=0; 
 
 KernelArg::KernelArg(JNIEnv *jenv, jobject argObj, KernelContext *_kernelContext):
    argObj(argObj),
@@ -29,14 +32,33 @@ KernelArg::KernelArg(JNIEnv *jenv, jobject argObj, KernelContext *_kernelContext
          javaArrayFieldID = JNIHelper::GetFieldID(jenv, c, "javaArray", "Ljava/lang/Object;");
          sizeInBytesFieldID = JNIHelper::GetFieldID(jenv, c, "sizeInBytes", "I");
          numElementsFieldID = JNIHelper::GetFieldID(jenv, c, "numElements", "I");
+         inlinePathVariableNamesFieldID = JNIHelper::GetFieldID(jenv, c, "inlineReferencePathVariableName", "Ljava/lang/String;");
+         inlinePathVariableTypesFieldID = JNIHelper::GetFieldID(jenv, c, "inlineReferencePathVariableType", "Ljava/lang/String;");
          argClazz  = c;
       }
       type = jenv->GetIntField(argObj, typeFieldID);
-      jstring nameString  = (jstring)jenv->GetObjectField(argObj, nameFieldID);
-      const char *nameChars = jenv->GetStringUTFChars(nameString, NULL);
-      name = strdup(nameChars);
-      jenv->ReleaseStringUTFChars(nameString, nameChars);
+
+      name = JNIHelper::getStringFieldContentAsCharArray(jenv, argObj, nameFieldID);
+      if (isPrimitive()) {
+         char* inlinePathVariableNames = JNIHelper::getStringFieldContentAsCharArray(jenv, argObj, inlinePathVariableNamesFieldID);
+         char* inlinePathVariableTypes = JNIHelper::getStringFieldContentAsCharArray(jenv, argObj, inlinePathVariableTypesFieldID);
+
+         splitStringBy(inlinePathVariableNames, ".", &inlinePathVariableNamesParts);
+         splitStringBy(inlinePathVariableTypes, ".", &inlinePathVariableTypesParts);
+
+         free(inlinePathVariableNames);
+         free(inlinePathVariableTypes);
+      }
    }
+
+void KernelArg::splitStringBy(char *toSplit, char *delimiter, std::vector<char*> *resultVector) {
+   char * pnt;
+   pnt = strtok(toSplit, delimiter);
+   while(pnt!= NULL) {
+      resultVector->push_back(strdup(pnt));
+      pnt = strtok(NULL, ".");
+   }
+}
 
 const char* KernelArg::getTypeName() {
    string s = "";
@@ -64,29 +86,29 @@ const char* KernelArg::getTypeName() {
    return s.c_str();
 }
 
-void KernelArg::getPrimitiveValue(JNIEnv *jenv, jfloat* value) {
-   jfieldID fieldID = jenv->GetFieldID(kernelContext->kernelClass, name, "F");
-   *value = jenv->GetFloatField(kernelContext->kernelObject, fieldID);
+void KernelArg::getPrimitiveValue(JNIEnv *jenv, jfloat* value, jobject baseRef, jclass baseClass) {
+   jfieldID fieldID = jenv->GetFieldID(baseClass, name, "F");
+   *value = jenv->GetFloatField(baseRef, fieldID);
 }
-void KernelArg::getPrimitiveValue(JNIEnv *jenv, jint* value) {
-   jfieldID fieldID = jenv->GetFieldID(kernelContext->kernelClass, name, "I");
-   *value = jenv->GetIntField(kernelContext->kernelObject, fieldID);
+void KernelArg::getPrimitiveValue(JNIEnv *jenv, jint* value, jobject baseRef, jclass baseClass) {
+   jfieldID fieldID = jenv->GetFieldID(baseClass, name, "I");
+   *value = jenv->GetIntField(baseRef, fieldID);
 }
-void KernelArg::getPrimitiveValue(JNIEnv *jenv, jboolean* value) {
-   jfieldID fieldID = jenv->GetFieldID(kernelContext->kernelClass, name, "B");
-   *value = jenv->GetByteField(kernelContext->kernelObject, fieldID);
+void KernelArg::getPrimitiveValue(JNIEnv *jenv, jboolean* value, jobject baseRef, jclass baseClass) {
+   jfieldID fieldID = jenv->GetFieldID(baseClass, name, "B");
+   *value = jenv->GetByteField(baseRef, fieldID);
 }
-void KernelArg::getPrimitiveValue(JNIEnv *jenv, jbyte* value) {
-   jfieldID fieldID = jenv->GetFieldID(kernelContext->kernelClass, name, "B");
-   *value = jenv->GetByteField(kernelContext->kernelObject, fieldID);
+void KernelArg::getPrimitiveValue(JNIEnv *jenv, jbyte* value, jobject baseRef, jclass baseClass) {
+   jfieldID fieldID = jenv->GetFieldID(baseClass, name, "B");
+   *value = jenv->GetByteField(baseRef, fieldID);
 }
-void KernelArg::getPrimitiveValue(JNIEnv *jenv, jlong* value) {
-   jfieldID fieldID = jenv->GetFieldID(kernelContext->kernelClass, name, "J");
-   *value = jenv->GetLongField(kernelContext->kernelObject, fieldID);
+void KernelArg::getPrimitiveValue(JNIEnv *jenv, jlong* value, jobject baseRef, jclass baseClass) {
+   jfieldID fieldID = jenv->GetFieldID(baseClass, name, "J");
+   *value = jenv->GetLongField(baseRef, fieldID);
 }
-void KernelArg::getPrimitiveValue(JNIEnv *jenv, jdouble* value) {
-   jfieldID fieldID = jenv->GetFieldID(kernelContext->kernelClass, name, "D");
-   *value = jenv->GetDoubleField(kernelContext->kernelObject, fieldID);
+void KernelArg::getPrimitiveValue(JNIEnv *jenv, jdouble* value, jobject baseRef, jclass baseClass) {
+   jfieldID fieldID = jenv->GetFieldID(baseClass, name, "D");
+   *value = jenv->GetDoubleField(baseRef, fieldID);
 }
 
 void KernelArg::getStaticPrimitiveValue(JNIEnv *jenv, jfloat* value) {
@@ -115,35 +137,48 @@ void KernelArg::getStaticPrimitiveValue(JNIEnv *jenv, jdouble* value) {
 }
 
 cl_int KernelArg::setPrimitiveArg(JNIEnv *jenv, int argIdx, int argPos, bool verbose){
+   jobject baseReference = kernelContext->kernelObject;
+
+   for (int i = 0; i < inlinePathVariableNamesParts.size(); i++) {
+      char* name = inlinePathVariableNamesParts.at(i);
+      char* type = inlinePathVariableTypesParts.at(i);
+
+      jclass c = jenv->GetObjectClass(baseReference);
+      jfieldID fieldID = JNIHelper::GetFieldID(jenv, c, name, type);
+      
+      baseReference = (jobject) jenv->GetObjectField(baseReference, fieldID);
+   }
+   jclass baseClass = jenv->GetObjectClass(baseReference); 
+
    cl_int status = CL_SUCCESS;
    if (isFloat()) {
        jfloat f;
-       getPrimitive(jenv, argIdx, argPos, verbose, &f);
+       getPrimitive(jenv, argIdx, argPos, verbose, &f, baseReference, baseClass);
        status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(f), &f);
    }
    else if (isInt()) {
        jint i;
-       getPrimitive(jenv, argIdx, argPos, verbose, &i);
+       getPrimitive(jenv, argIdx, argPos, verbose, &i, baseReference, baseClass);
        status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(i), &i);
    }
    else if (isBoolean()) {
        jboolean z;
-       getPrimitive(jenv, argIdx, argPos, verbose, &z);
+       getPrimitive(jenv, argIdx, argPos, verbose, &z, baseReference, baseClass);
        status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(z), &z);
    }
    else if (isByte()) {
        jbyte b;
-       getPrimitive(jenv, argIdx, argPos, verbose, &b);
+       getPrimitive(jenv, argIdx, argPos, verbose, &b, baseReference, baseClass);
        status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(b), &b);
    }
    else if (isLong()) {
        jlong l;
-       getPrimitive(jenv, argIdx, argPos, verbose, &l);
+       getPrimitive(jenv, argIdx, argPos, verbose, &l, baseReference, baseClass);
        status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(l), &l);
    }
    else if (isDouble()) {
        jdouble d;
-       getPrimitive(jenv, argIdx, argPos, verbose, &d);
+       getPrimitive(jenv, argIdx, argPos, verbose, &d, baseReference, baseClass);
        status = clSetKernelArg(kernelContext->kernel, argPos, sizeof(d), &d);
    }
    return status;
