@@ -12,14 +12,19 @@ public class LinearGrid {
    private double[] values;
 
    public LinearGrid(int dimX, int dimY, int dimZ) {
+      this(dimX, dimY, dimZ, new double[dimX * dimY * dimZ]);
+   }
+
+   public LinearGrid(int dimX, int dimY, int dimZ, double[] values) {
       this.size = dimX * dimY * dimZ;
 
       this.dimX = dimX;
       this.dimY = dimY;
       this.dimZ = dimZ;
 
-      values = new double[size];
+      this.values = values;
    }
+
 
    public void put(KernelRunner kernelRunner) {
       kernelRunner.put(values);

@@ -87,18 +87,25 @@ public class ObjectOfArraysTest {
 
    @Test
    public void testLinearGrid() {
-      LinearGrid grid = new LinearGrid(10, 10, 10);
-      grid.put(kernelRunner);
+      double[] values1 = new double[10 * 10 * 10];
+      for (int i = 0; i < values1.length; i++) values1[i] = 1;
 
-      LinearGridKernel kernel = new LinearGridKernel(grid);
-      kernelRunner.execute(kernel, grid.getSize());
+      double[] values2 = Arrays.copyOf(values1, values1.length);
 
-      grid.get(kernelRunner);
+      LinearGrid grid1 = new LinearGrid(10, 10, 10, values1);
+      LinearGrid grid2 = new LinearGrid(10, 10, 10, values2);
+      grid1.put(kernelRunner);
+      grid2.put(kernelRunner);
 
-      for (int x = 0; x < grid.getDimY(); x++) {
-         for (int y = 0; y < grid.getDimY(); y++) {
-            for (int z = 0; z < grid.getDimZ(); z++) {
-               assertEquals(grid.valueAt(x, y, z), 1, 0.0001);
+      LinearGridKernel kernel = new LinearGridKernel(grid1, grid2);
+      kernelRunner.execute(kernel, grid1.getSize());
+
+      grid1.get(kernelRunner);
+
+      for (int x = 0; x < grid1.getDimY(); x++) {
+         for (int y = 0; y < grid1.getDimY(); y++) {
+            for (int z = 0; z < grid1.getDimZ(); z++) {
+               assertEquals(grid1.valueAt(x, y, z), 2, 0.0001);
             }
          }
       }

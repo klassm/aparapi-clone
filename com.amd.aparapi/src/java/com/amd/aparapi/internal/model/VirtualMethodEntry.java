@@ -559,6 +559,7 @@ public class VirtualMethodEntry {
       if (_methodCall instanceof InstructionSet.I_INVOKEVIRTUAL) {
          InstructionSet.I_INVOKEVIRTUAL methodCallInstruction = (InstructionSet.I_INVOKEVIRTUAL) _methodCall;
          String fieldName = methodCallInstruction.getVirtualMethodInvokeFieldName();
+          System.out.println(fieldName);
          VirtualMethod virtualMethod = virtualMethodFor(fieldName, _methodEntry.getClassMethodName());
 
          return virtualMethod.getNameWrappedMethodModel();
